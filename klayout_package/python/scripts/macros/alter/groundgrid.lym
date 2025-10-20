@@ -36,17 +36,20 @@
 
 """
 Creates a ground plane grid covering the top cell bounding box, except the parts in grid avoidance layer. Requires at
-least one cell to exist in the current layout. Only creates the grid for "1t1"-face.
+least one cell to exist in the current layout. Creates the grid for a single face
 """
 
 from kqcircuits.defaults import default_layers
 from kqcircuits.klayout_view import KLayoutView
-from kqcircuits.util.groundgrid import make_grid
+from kqcircuits.util.groundgrid import insert_ground_grid
 
 cell = KLayoutView(current=True).active_cell
 
 if not cell:
   raise ValueError('Create a cell first')
+
+face = "1t1"
+grid_mag_factor = 1
 
 layout = cell.layout()
 grid_area = cell.bbox_per_layer(layout.layer(default_layers["1t1_ground_grid_avoidance"]))
