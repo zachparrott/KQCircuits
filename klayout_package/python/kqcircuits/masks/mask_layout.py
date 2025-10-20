@@ -1,4 +1,5 @@
 # This code is part of KQCircuits
+# Copyright (C) 2025 Zachary Parrott
 # Copyright (C) 2021 IQM Finland Oy
 #
 # This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
@@ -386,6 +387,7 @@ class MaskLayout:
                 self.text_margin,
                 [self.face()[layer] for layer in layers],
                 self.face()["ground_grid_avoidance"],
+                259.7,
                 mirror=self.mirror_labels,
             )
             if mask_name_for_chip is not None:
@@ -398,6 +400,7 @@ class MaskLayout:
                     self.text_margin,
                     [self.face()[layer] for layer in layers],
                     self.face()["ground_grid_avoidance"],
+                    259.7,
                     mirror=self.mirror_labels,
                 )
             bbox_xr = bbox.right if dtrans.is_mirror() else bbox.left

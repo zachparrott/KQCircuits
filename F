@@ -1,0 +1,479 @@
+[33mcommit 5635dc5e394504e9da613da5a8794cf35a2ad84c[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;33mtag: v4.6.26[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Pavel Smirnov <pavel.smirnov@meetiqm.com>
+Date:   Thu May 25 12:12:11 2023 +0300
+
+    Generic simulation class builder for individual elements
+
+[33mcommit 056d57ac4fad49d0cc6c54abc1bb4f07ba938a29[m
+Author: Eelis Takala <eelis@meetiqm.com>
+Date:   Mon Jun 19 15:53:33 2023 +0300
+
+    Configure adaptive meshing and singularity images
+    
+    Previous proof of concept is finalized
+      * Singularity image for Ubuntu is provided and preferred
+      * Install script for building everything is decoupled from the def
+        file
+      * Adaptive meshing is configured so that it works correctly
+    
+    Implementation issue: parallel adaptive meshing may crash at the moment
+
+[33mcommit 273008b10759426ea67128059344b7affd7d0db3[m
+Author: Niko Savola <niko@meetiqm.com>
+Date:   Thu Jun 8 14:26:09 2023 +0300
+
+    Support Adaptive Meshing in Elmer export
+    
+    * Adaptive meshing example in `cpw_circle_sim`
+
+[33mcommit 17fba72ada6c3f1f5774c070c8607bd341f332ec[m
+Author: Niko Savola <niko@meetiqm.com>
+Date:   Fri Jun 2 07:21:34 2023 +0000
+
+    Compile Elmer etc. manually in Singularity image
+    
+    Image is changed to Centos7 for trusted behaviour in HPC environments. All possible libraries one might need are linked to Elmer.
+
+[33mcommit d7985971c5cfa83528899ec18debc9bdc7a1efc1[m
+Author: Andrew Guthrie <andrew.guthrie@meetiqm.com>
+Date:   Fri Sep 1 11:36:00 2023 +0000
+
+    Add ground_grid_in_trace parameter which can be used in quality_factor.py
+
+[33mcommit 70fdc5c4062b382486b9c75ab05af6a0eda7a001[m[33m ([m[1;33mtag: v4.6.25[m[33m)[m
+Author: KristinnJuliusson <kristinn@meetiqm.com>
+Date:   Fri Jul 28 14:36:26 2023 +0300
+
+    refactor markers and mask_layout
+
+[33mcommit be258efb17d8620850fb5d14016817844fee9209[m
+Author: Alessandro Landra <alessandro@meetiqm.com>
+Date:   Fri Aug 18 09:02:41 2023 +0300
+
+    Add a concentric transmon qubit from KQC winter school
+
+[33mcommit b2f168072354857699b28ab0295361b160aed236[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Mon Aug 28 16:20:44 2023 +0300
+
+    EdgePort's 'side' is inferred from 'towards'
+    
+    in 'produce_waveguide_to_port()' if it is not already specified by the 'side'
+    argument.
+    
+    Fix #8
+
+[33mcommit dac62a7f4018eac50ecb20aedd32668e190a2f84[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Thu Aug 24 16:03:34 2023 +0300
+
+    Improve 'kqc' console script
+    
+    The 'simulation' command is simplified to 'sim'.
+    
+    It is possible to list availabe masks or simulations:
+    * kqc mask ls
+    * kqc sim ls
+    
+    It is possible to only export simulation files without actually running them:
+    * kqc sim airbridges_sim.py --export-only
+    
+    Issue #1260 & #1335
+
+[33mcommit 7b56978ec4ead5adfe0e047b2e2e7e39a6b1875d[m
+Author: Tuomas Myllari <tuomas.myllari@meetiqm.com>
+Date:   Thu Aug 10 14:41:53 2023 +0300
+
+    Implement hanger resonator element and simulation class
+
+[33mcommit 8fdb46feaf6db280869295ceb0244b59d9f56f16[m
+Author: Tuomas Myllari <tuomas.myllari@meetiqm.com>
+Date:   Thu Aug 17 14:01:06 2023 +0300
+
+    Add support for MPI in WSL + Singularity
+
+[33mcommit 09db92df4b6c162739f552bf8d2591b35945b0cf[m[33m ([m[1;33mtag: v4.6.24[m[33m)[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Thu Jul 13 16:12:08 2023 +0300
+
+    Allow Element Nodes to chage WGC's 'r'
+
+[33mcommit 46e24b293da8a0847ee98befcd4e1cfd2eb333cf[m
+Author: Jukka Räbinä <jukka@meetiqm.com>
+Date:   Fri Aug 18 11:46:55 2023 +0000
+
+    Enable custom port size and custom layout.dby in simulations
+
+[33mcommit f1f65466e9f4c8ffead246760e310f1306c80e38[m
+Author: Jukka Räbinä <jukka@meetiqm.com>
+Date:   Fri Aug 18 11:32:05 2023 +0000
+
+    Avoid nm scale overlaps and gaps in simulation geometry
+    
+    Function `match_points_on_edges` is created and
+    called at the end of `create_simulation_layers`.
+
+[33mcommit 2c2b21776942439b054bf134e710c0fec55a828a[m
+Author: Jukka Räbinä <jukka@meetiqm.com>
+Date:   Fri Aug 4 09:04:26 2023 +0300
+
+    Update default value of ansys_executable
+    
+    Folder name 'v222' is replaced with 'v232'.
+    
+    In some occasions, the subtract and union operators in
+    Ansys version 2023/R2 seems to require
+    "TurnOnNBodyBoolean" parameter, which is now added.
+
+[33mcommit f5f0223f60d1491f57879108a9cbf077e2739218[m
+Author: Kiddi <kristinn@meetiqm.com>
+Date:   Thu May 11 18:11:42 2023 +0300
+
+    Make mask name location automatic, remove mask_name_offset parameter
+    and remove chips that overlap with the mask name
+
+[33mcommit cb6dedbf116a19d5387f3eaa443bc6eaa11391bf[m
+Author: Caspar <caspar@meetiqm.com>
+Date:   Mon Aug 7 13:50:02 2023 +0300
+
+    Update networkx and matplotlib requirement
+
+[33mcommit 813037e2bccb15cf756aaa66276219983bee4172[m
+Author: Andrew Guthrie <andrew.guthrie@meetiqm.com>
+Date:   Tue Jul 25 14:54:07 2023 +0300
+
+    add updated double_pads.py parameters to double_pads_sim.py
+    
+    Closes #1319
+
+[33mcommit ca16f4bbbb50df3d39fc6d9e82e75026a567f245[m
+Author: Jukka Räbinä <jukka@meetiqm.com>
+Date:   Fri Aug 4 15:06:03 2023 +0300
+
+    Clarify region operations for simulation layers
+    
+    The `region_with_merged_polygons` is taken out from function
+    `merged_region_from_layer`, which is now called as
+    `region_from_layer`.
+    
+    Fine-tuning of simulation layers is now compacted into
+    function `simplified_region`.
+    
+    Order of operations is modified in building of
+    `lithography_region` to fix the bug.
+
+[33mcommit 18f99f0b8eb7bcc63ffcb4981d1a0baf4b8646cc[m
+Author: Jukka Räbinä <jukka@meetiqm.com>
+Date:   Fri Aug 4 10:05:50 2023 +0300
+
+    Fix stack_types_tutorial_sim.py
+    
+    TsvStandard has changed 4 months ago and has
+    now shapes on both faces. This MR applies
+    required changes to stack_types_tutorial_sim.py
+
+[33mcommit ccdc7a040079f5f4eb6225b5a738c3aeb51b5153[m
+Author: Eelis Takala <eelis@meetiqm.com>
+Date:   Thu Apr 13 16:02:03 2023 +0300
+
+    Add capacitive x coupler and its simulation
+
+[33mcommit b29af7b934fee7e935ca22a9c0dd64120ae62692[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Mon Jul 31 10:26:52 2023 +0300
+
+    Add parameter names to markers in documentation
+    
+    Markers for annotating auto-generated images in documentation now may have one
+    more argument, the name of the parameter. This will also be shown in the image.
+    
+    Fix #53
+
+[33mcommit 0a6f5817c0e0a4ca38805df351a4cd8ece72bb7d[m
+Author: Andrew Guthrie <andrew.guthrie@meetiqm.com>
+Date:   Fri Jul 21 16:28:43 2023 +0300
+
+    Add pad_separation parameter in ManhattanSingleJunction
+
+[33mcommit 726093f032a30f262564e9e0a37c4eef661555eb[m[33m ([m[1;33mtag: v4.6.23[m[33m)[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Thu Jul 27 18:40:27 2023 +0300
+
+    Exclude list for documentation image generation
+    
+    Modules specified in 'excluded_module_names' in 'defaults.py' will not have
+    picture in the generated HTML documentation if make_pcell_images.py is called
+    with the --skip-excluded-modules parameter, or more typically, this parameter
+    is passed to make in the 'IMGOPTS' variable.
+
+[33mcommit 4a0fae8f229222e26b94d7ea690f33838660d124[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Thu Jul 27 21:26:58 2023 +0300
+
+    Remove old unused documentation images
+
+[33mcommit a68f038d65e6f818e0b94558c6bd6fca17c2ab81[m[33m ([m[1;33mtag: v4.6.22[m[33m)[m
+Author: Pavel Smirnov <pavel.smirnov@meetiqm.com>
+Date:   Tue Jul 18 10:08:46 2023 +0300
+
+    Qualityfactor chip launchers arranged for standard sample holders
+    
+    - Currently supports SMA8 and ARD24
+    - Parameters launcher_top_dist and launcher_indent deprecated
+
+[33mcommit df175ac6212517d2099afc1d14cfa8e202f0a80c[m
+Author: Andrew Guthrie <andrew.guthrie@meetiqm.com>
+Date:   Tue Jul 18 10:29:42 2023 +0300
+
+    Make aluminium pads in manhattan_single_junction.py sizable
+    
+    Closes #iqc/556
+
+[33mcommit de5efeeb6eeccb160ddbb8aac53b7343ca1cdb28[m
+Author: Alessandro Landra <alessandro@meetiqm.com>
+Date:   Fri Jul 21 11:31:26 2023 +0300
+
+    Update list of contributors
+
+[33mcommit 067835b02171c9597ad67e3b595c2571838ec3f0[m
+Author: Pavel Smirnov <pavel.smirnov@meetiqm.com>
+Date:   Wed Jul 19 15:37:17 2023 +0300
+
+    Ability to specify custom chip position label for extra_chips argument
+
+[33mcommit d86872a76bdf1db315ad079148fa71f6c7de43c2[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Mon Jun 26 19:53:47 2023 +0300
+
+    Add sub-mask-map with different chip size to mask
+    
+    The add_chips_map function of the main mask layout may be used to construct big
+    masks from severals sub-maps, possibly using different chip sizes.
+    
+    Issue #1291
+
+[33mcommit 9020056256b8f189229c76e5fe737f375e6daf97[m[33m ([m[1;33mtag: v4.6.21[m[33m)[m
+Author: Caspar <caspar@meetiqm.com>
+Date:   Thu Jun 29 10:50:49 2023 +0300
+
+    Fix margin bug in QualityFactorTwoface
+    
+    This MR fixes a bug in QualityFactorTwoface, where the `ground_grid_avoidance` layer had no margin around `base_metal_gap` for some parameters.
+
+[33mcommit 4c1808d32a23c3a28c944f0f9bd9287e6fbb050e[m
+Author: Caspar <caspar@meetiqm.com>
+Date:   Thu Jun 22 23:47:17 2023 +0300
+
+    Support changing waveguide dimensions on different faces
+    
+    This MR adds support for changing the waveguide `a` and `b` when changing face in WaveguideComposite. In addition, FlipChipConnectorRf has `a2` and `b2` parameters similar to FingerCapacitorSquare.
+    
+    In addition, this MR fixes geometry in FlipChipConnectorRf is when using `output_rotation != 180` and `n_center_bumps > 1`, but only when `round_connector = True`.
+
+[33mcommit f808a464520a983a2a929b991db69507470335b6[m
+Author: Caspar Ockeloen-Korppi <caspar@meetiqm.com>
+Date:   Tue Jun 20 07:03:41 2023 +0000
+
+    Refactor QualityFactorTwoface to cleaner code.
+    
+    This merge request simplifies QualityFactorTwoface to use a single WaveguideComposite and a separate method to generate each resonator.
+
+[33mcommit 0ff8dfbc3ceab000a5043c19169e3ea58af16da8[m
+Author: Pavel Smirnov <pavel.smirnov@meetiqm.com>
+Date:   Tue Jun 13 09:55:28 2023 +0300
+
+    Update create_element_from_path and notebooks related docs
+
+[33mcommit b855aa4a565ac022c2cf819c697f3033de270e47[m[33m ([m[1;33mtag: v4.6.20[m[33m)[m
+Author: Avin Divakara <67309607+AVDiv@users.noreply.github.com>
+Date:   Fri Jun 9 10:43:44 2023 +0530
+
+    Added instructions to setup create_element_from_path on Vim/Neovim
+
+[33mcommit ec21e4b1fba7a9553cfb990956a8d7ac3ca4869e[m
+Author: Eelis Takala <eelis@meetiqm.com>
+Date:   Tue May 23 10:01:04 2023 +0300
+
+    Implement unlink feature for `setup_symlinks`
+
+[33mcommit 2ae6f5bf06eeed210a02cfa7f914f39daff45e2f[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Mon Jun 12 12:05:40 2023 +0300
+
+    Remove old 0.26.7 klayout from testing matrix
+
+[33mcommit d6c6d68d720c17025e690fd5fdc26d7705add88f[m
+Author: Andrew Guthrie <andrew.guthrie@meetiqm.com>
+Date:   Thu Jun 1 13:31:07 2023 +0300
+
+    Allow launchers on arbitrary face
+    
+    Closes #1312
+
+[33mcommit 6be40f6b7376fb39477bd86f30379c2fb0b637d7[m
+Author: Pavel Smirnov <pavel.smirnov@meetiqm.com>
+Date:   Thu Jun 1 16:31:02 2023 +0300
+
+    Update KL_FILE in docker jobs
+
+[33mcommit a17f32eba1b040bce27bb59dc526dcd2b08e81b5[m
+Author: Niko Savola <niko@meetiqm.com>
+Date:   Fri Apr 14 16:54:49 2023 +0300
+
+    Improve documentation for defining and exporting simulations
+
+[33mcommit 1a2bb459d99c344672aae6c8e4d999f1a4a4dd67[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Thu May 18 13:52:19 2023 +0300
+
+    WaveguideComposite may use base_metal_addition too
+    
+    The 'add_metal' Node parameter lets WaveguideCoplanar segments pass through
+    metal gap regions.
+    
+    Issue #1307
+
+[33mcommit eb92c0f3ea57d0f31fcde66696479824c2403d2e[m
+Author: Niko Savola <niko@meetiqm.com>
+Date:   Thu Mar 16 11:40:51 2023 +0200
+
+    Enable `undefined-variables` check for pylint
+
+[33mcommit 0f23322b62fb873b7ba45736a2ed5c309d188d7f[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Tue May 16 13:15:07 2023 +0300
+
+    Better detect and report mask clearance violations
+    
+    * use distance from wafers edge to the nearest point of the chip
+    * remove and report violationg chips
+    
+    Issue: #1303
+
+[33mcommit 407d50811d1f321bf8ba11fa94f13aa00b4105e7[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Wed May 17 16:11:30 2023 +0300
+
+    Make Tsv elements use self.n
+    
+    Issue #1301
+
+[33mcommit 7bc81f8d53a62bc1f294cd261093fe46810047f9[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Thu Mar 16 13:48:41 2023 +0200
+
+    Add geometry diff tool 'gdiff'
+    
+    Compares two OASIS or GDS2 files given as arguments and shows if their geometry
+    differs. If they do not differ KLayout's XOR Tool won't find a difference
+    either.
+    
+    Alternatively, it accepts two directories as arguments in this case recursively
+    searches for files in them. Missing files are indicated, common files are compared.
+    
+    Issue #1272
+
+[33mcommit f028265dab1dad6a11e40abd1a1a3fd884d1115e[m
+Author: Eelis Takala <eelis@meetiqm.com>
+Date:   Thu Apr 27 13:09:01 2023 +0300
+
+    Fix distance in `find_edge_from_point_in_polygons`
+
+[33mcommit 56407298395812c87e0afd921b92bd191b876acc[m
+Author: Alessandro Landra <alessandro@meetiqm.com>
+Date:   Fri Apr 28 15:40:07 2023 +0300
+
+    Enable extra transformations in fluxlines
+
+[33mcommit 5cd619817fac1c5df6dddfb16f9e4c523f7137c8[m
+Author: Caspar <caspar@meetiqm.com>
+Date:   Mon Apr 17 12:30:24 2023 +0300
+
+    Extend Salt tutorial to getting started
+
+[33mcommit 5969bbdd0137841b167a8344e63ca8e13b5546f1[m[33m ([m[1;33mtag: v4.6.18[m[33m)[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Thu Apr 13 12:26:48 2023 +0300
+
+    Support for alternative Element breakdown lists
+    
+    in netlist generation. Makes it possible to generate several netlists with
+    diferent Element breakdow lists in one step. The default continues to work as
+    before.
+
+[33mcommit 9ba01a93c2bcadcf5138c1c381c3408bd001ca0d[m
+Author: dgploss <125267946+dgploss@users.noreply.github.com>
+Date:   Tue Apr 25 16:23:58 2023 +0300
+
+    Fix Meander size in WaveguideComposite
+    
+    by passing starting a/b to it.
+    
+    Fixes #37
+
+[33mcommit e8f44bdd43e7a6de3a967af457012cda47a93b24[m[33m ([m[1;33mtag: v4.6.17[m[33m)[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Mon Apr 24 12:59:17 2023 +0300
+
+    Allow symbolic `face_id` in get_layer()
+    
+    In place of the usual 'get_layer("ground_grid", 1)'
+    you may choose to use 'get_layer("ground_grid", "2b1")'
+
+[33mcommit dad03bede33d9f49dfaf9c594cf3d32b4c15b5e6[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Tue Apr 18 10:09:41 2023 +0300
+
+    Change GitHub version badge to PyPI badge
+    
+    if everything is in order they are identical anyway.
+
+[33mcommit 945562414daa944597e71e4da6c98c33b1af7ae7[m[33m ([m[1;33mtag: v4.6.16[m[33m)[m
+Author: Andrew Guthrie <andrew.guthrie@meetiqm.com>
+Date:   Thu Mar 16 13:07:59 2023 +0200
+
+    Restructure waveguide_composite to allow for any face_changing_elements to be used.
+    
+    -Modify waveguide_composite to place face_changing_elements
+    -Adds face_changing_elements list to the defaults.
+    -Refactor flip_chip_connector_rf to include arbitrary face placement
+
+[33mcommit 4be414f8e1d519555186b160f943db95ae31fd04[m
+Author: Andrew Guthrie <andrew.guthrie@meetiqm.com>
+Date:   Fri Apr 21 16:06:07 2023 +0300
+
+    Refactor function "insert_n_launchers"
+
+[33mcommit 4e8cd2954b2d30dd57e367953722c0f0b88ab72e[m
+Author: Andrew Guthrie <andrew.guthrie@meetiqm.com>
+Date:   Fri Apr 14 17:14:35 2023 +0300
+
+    Add island_island gap parameter, remove taper_height parameter in double_pads.py
+    
+    Closes #1288
+
+[33mcommit 6401608968465f304920027cd7dadf28712f5128[m
+Author: Niko Savola <niko@meetiqm.com>
+Date:   Wed Feb 15 08:46:24 2023 +0000
+
+    Move example notebooks to separate repository
+    
+    https://github.com/iqm-finland/KQCircuits-Examples
+
+[33mcommit 2aa2238a6452e9a25b5d3a86aeac46407a70397a[m[33m ([m[1;33mtag: v4.6.15[m[33m)[m
+Author: Pavel Smirnov <pavel.smirnov@meetiqm.com>
+Date:   Mon Apr 17 16:35:53 2023 +0300
+
+    Updated probeline naming convention
+
+[33mcommit b7ab279e5b80c80e089639fad29287033b76e2c6[m
+Author: Alessandro Landra <alessandro@meetiqm.com>
+Date:   Wed Apr 5 16:32:22 2023 +0300
+
+    Allow to calculate layers density in masks
+
+[33mcommit a253eca0ebfcf99264f086379fcdf66827aadaf0[m
+Author: Pavel Smirnov <pavel.smirnov@meetiqm.com>
+Date:   Mon Apr 17 11:08:38 2023 +0300
+
+    Fix top face etching for waveguide cross-section simulation

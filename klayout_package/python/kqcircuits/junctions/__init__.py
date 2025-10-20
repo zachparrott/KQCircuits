@@ -28,9 +28,14 @@ QCD1, QCD2 and QCD3.
 """
 
 junction_type_choices = [
-    "No Squid",
+    "NoSquid",
     "Manhattan",
     "Manhattan Single Junction",
     "Super Inductor",
     "Sim",
+    "Overlap",
+    # "Test Array",
+    "Overlap Array",
+    "Overlap Simple",
+    "Overlap Simple Series"
 ]

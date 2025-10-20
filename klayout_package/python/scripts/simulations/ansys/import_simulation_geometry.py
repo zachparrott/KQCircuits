@@ -1,4 +1,5 @@
 # This code is part of KQCircuits
+# Copyright (C) 2025 Zachary Parrott
 # Copyright (C) 2021 IQM Finland Oy
 #
 # This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
@@ -578,7 +579,7 @@ if not ansys_project_template:
             True,
             ["NAME:MeshLink", "ImportMesh:=", False],
             "BasisOrder:=",
-            1,
+            -1,
             "DoLambdaRefine:=",
             True,
             "DoMaterialLambda:=",
@@ -586,7 +587,7 @@ if not ansys_project_template:
             "SetLambdaTarget:=",
             False,
             "Target:=",
-            0.3333,
+            0.6667,
             "UseMaxTetIncrease:=",
             False,
             "PortAccuracy:=",

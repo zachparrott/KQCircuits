@@ -1,0 +1,450 @@
+[33mcommit 45db70357247f2f3ab7da915b95180099b83c5ee[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: David Janzso <83572540+iqmtestd@users.noreply.github.com>
+Date:   Fri Oct 20 15:05:26 2023 +0300
+
+    Fix HangerResonator (#70)
+    
+    It uses the more efficient WaveguideCoplanar and thus also avoids recursive
+    element usage (disallowed by KLayout) when insertend in WaveguideComposite.
+    
+    Fix #69
+
+[33mcommit a76710592f2edce1ec11952a91cd890684ecf34d[m
+Author: Caspar <caspar@meetiqm.com>
+Date:   Thu Oct 12 12:38:27 2023 +0300
+
+    Support multi-face layouts and rectangular chips in masks
+    
+    This commit adds new features to mask layout generation:
+    - Make it easier to create mask layouts for multiple faces on the same wafer
+    - Make it possible to use rectangular (non-square) chips
+    - New mask demo_multiface.py to demonstrate these features
+
+[33mcommit e35b22f26d29ccb41a753da32eb17964bf290345[m
+Author: Caspar Ockeloen-Korppi <caspar@meetiqm.com>
+Date:   Wed Oct 18 05:55:55 2023 +0000
+
+    generalize protect_opposite_face
+
+[33mcommit 6fba642973d7afa5f9e5b68859f5183a02530946[m
+Author: Caspar <caspar@meetiqm.com>
+Date:   Fri Sep 29 19:38:15 2023 +0300
+
+    Allow drawing chip edges in base metal gap
+
+[33mcommit 81c8dec8e151890a3bca2d4dbb3aea17f81fa0a8[m
+Author: Jukka Räbinä <jukka@meetiqm.com>
+Date:   Tue Oct 10 13:48:27 2023 +0300
+
+    Move Ansys executable parameter to defaults.py
+
+[33mcommit 7e965d427374c10ce05a945e30b3e6dff1f17e98[m
+Author: Jukka Räbinä <jukka@meetiqm.com>
+Date:   Tue Oct 10 12:35:59 2023 +0300
+
+    Option to set renormalization impedance for HFSS
+    
+    Disable the renormalization by setting `port.renormalization = None`.
+    
+    Refactor usage of `deemped_len` so that it's applied only in HFSS.
+
+[33mcommit bfebcbb4389afbc3e6a8d7ea5d90bafbbb76a6c6[m
+Author: AlessandroLandra <alessandro@meetiqm.com>
+Date:   Wed Oct 11 13:07:39 2023 +0300
+
+    Allow independent control of TSV margin from ground grid
+
+[33mcommit cb3a7c96664543e722a595645ae3f83d7f544355[m
+Author: Pavel Smirnov <pavel.smirnov@meetiqm.com>
+Date:   Wed Oct 4 11:48:22 2023 +0300
+
+    Optional `mer_box` argument added to `create_xsections_from_simulations`
+    
+    If `mer_box` is set, all XSection geometries inside that box will be
+    separated to a duplicate layer with "_mer" suffix.
+    This includes taking all negative space inside the mer_box
+    and placing it in the "vacuum_mer" layer.
+    This provides support for metal edge region simulations.
+
+[33mcommit 1e3a1fc549258e49a964c3405c147bb28793b8d6[m[33m ([m[1;33mtag: v4.7.1[m[33m)[m
+Author: Jukka Räbinä <jukka@meetiqm.com>
+Date:   Tue Sep 26 15:30:05 2023 +0300
+
+    Metal edge region, epr integration, and manual refinement
+    
+    Enable metal edge region to divide substrate, vacuum and TLS
+    layers into smaller pieces next to metal edge. Dimensions of metal
+    edge region are set by parameter `metal_edge_region_dimensions`.
+    
+    Improve TLS layers in simulation class. Now, these can be modelled
+    as sheet layers, non-model layers, or material layers. TLS layers
+    work with sheet or thick metal layers and with vertical over
+    etching, but not with multilayer stack-up feature.
+    
+    Add in-house energy integration to Ansys export. This is now more
+    straight-forward compared to pyEPR method. The energy integration
+    is enabled by setting the export parameter
+    `'integrate_energies': True` and the post-processing to calculate
+    participation ratios is enable by setting
+    `'post_process_script': 'export_epr.py'`.
+    
+    Add `mesh_size` feature to Ansys simulations to enable manual
+    refinement on any layer.
+    
+    Remove parameter `gap_max_element_length`, because `mesh_size` has
+    the same functionality.
+    
+    Fix simulation scripts that are affected by the changes. This
+    includes removal of `gap_max_element_length` and refactoring of
+    `participation_sheet_distance` and `participation_sheet_thickness`
+    parameters.
+    
+    Create simulation script `TLS_waveguide_sim.py` to demonstrate the
+    new features.
+    
+    Fix `t1_estimate.py` to work without need to unite the TLS layers.
+
+[33mcommit 8b62e04723612908e338b8b8761eb6db3c5698ac[m
+Author: AlessandroLandra <alessandro@meetiqm.com>
+Date:   Mon Oct 9 14:06:47 2023 +0300
+
+    Homogenous protection around TSVs
+
+[33mcommit 5eed17aa06da092922b46238511e85c03d4c1869[m
+Author: Eelis Takala <eelis@meetiqm.com>
+Date:   Mon Oct 2 17:03:39 2023 +0300
+
+    Implement outer BCs for 2D simulation
+    
+    In this commit boundary condition are implemented for 2D electrostatic simulation.
+    One can give "potential" value for `xmin`, `xmax`, `ymin` and `ymax`
+    boundaries.
+    
+    This feature is demonstrated in
+    `klayout_package/python/scripts/simulations/xsection_cull_with_boundaries.py`
+
+[33mcommit 9dd13299d62157216b443151341ca939453569af[m
+Author: Tuomas Myllari <tuomas.myllari@meetiqm.com>
+Date:   Wed Sep 27 16:54:05 2023 +0300
+
+    Support interface layer partitioning "int_layer_part1"
+    
+    Calculate total EPR from interface layer partitions
+    Inherit material parameters from similarily names layers in Elmer simulations
+
+[33mcommit c4e1a95b41b9427b62ee374c15a197411d600386[m
+Author: Caspar <caspar@meetiqm.com>
+Date:   Mon Oct 2 11:55:44 2023 +0300
+
+    Use all Chip parameters in mock_chips mask export
+
+[33mcommit a06090f146225f074ad4422d12b8bc19c2a17fdb[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Tue Oct 3 10:19:24 2023 +0300
+
+    Prevent overlap between markers and chips
+
+[33mcommit 685e7dbb969586428ea05ee86273935879054e6f[m[33m ([m[1;33mtag: v4.7.0[m[33m)[m
+Author: Pavel Smirnov <pavel.smirnov@meetiqm.com>
+Date:   Wed Oct 4 14:34:45 2023 +0300
+
+    Salt package v4.7.0
+
+[33mcommit 5aeb8e86087e02b491bd83b8c0c378c652242311[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Wed Oct 4 12:01:41 2023 +0300
+
+    Singularity build uses --fakeroot only when needed
+    
+    Issue #1372
+
+[33mcommit 4b04b1cbca6cc993c43598c207a636b1d328cc43[m
+Author: Tuomas Myllari <tuomas.myllari@meetiqm.com>
+Date:   Tue Sep 26 18:32:59 2023 +0300
+
+    Enable Gmsh multithreading in Slurm simulation export
+    
+    Separate Elmer simulations with Slurm into 2 separate sbatch jobs:
+    1. Multithreaded job running Gmsh and Elmergrid
+    2. Multiprocess job running Elmer
+    
+    Add custom sbatch_parameters separately for these 2 jobs. Modify documentation accordingly
+
+[33mcommit 9f0b016b2f6a3645da7d1105672c12b7d7d0fa2c[m
+Author: Pavel Smirnov <pavel.smirnov@meetiqm.com>
+Date:   Fri Sep 29 16:34:53 2023 +0300
+
+    Option to limit vertical domain of XSection geometry
+
+[33mcommit 67e8481d79cd9c22d374484e4d884884e4b033bd[m
+Author: Caspar Ockeloen-Korppi <caspar@meetiqm.com>
+Date:   Fri Sep 29 12:41:44 2023 +0000
+
+    Fix etch opposite face margins in QualityFactorTwoface
+
+[33mcommit 94e840bde9c1177bbce55cef2470eef6ad426452[m
+Author: Jukka Räbinä <jukka@meetiqm.com>
+Date:   Fri Sep 29 09:17:02 2023 +0300
+
+    Make ansys export bat file executable in linux
+
+[33mcommit ece4a305c006a8df3f696bc5cf692abd47ce57d7[m
+Author: KristinnJuliusson <kristinn@meetiqm.com>
+Date:   Wed Aug 30 18:05:05 2023 +0300
+
+    enable export of chip_array_to_export during mask export
+
+[33mcommit 73d30d0eb95e04b2549e867fc553ccb32451d7ae[m[33m ([m[1;33mtag: v4.6.30[m[33m)[m
+Author: Caspar <caspar@meetiqm.com>
+Date:   Wed Sep 27 10:49:51 2023 +0300
+
+    Implement --mock_chips option in mask export
+    
+    This commit adds the `kqc mask -m` command line option in mask export.
+    With `-m` enabled, all chips in the mask are replaced by empty chips
+    (only chip frames), such taht the placement of chips and mask markers
+    can be tested quickly.
+
+[33mcommit 5de2b2037ad89e460f79cf72a158cb3c160ed125[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Sat Sep 16 17:53:58 2023 +0530
+
+    Reload existing PCells without closing KLayout
+    
+    The "KQCircuits -> Reload libraries" command apart from reloading the
+    libraries also saves and re-creates all PCells in every view using
+    the updated code but retaining all the parameter changes of the user.
+    
+    Fix #14
+
+[33mcommit 50e69e196f0a7c299af42875e5ae72ea6a1aa9bc[m
+Author: David Janzso <83572540+iqmtestd@users.noreply.github.com>
+Date:   Wed Sep 27 16:16:47 2023 +0300
+
+    Fix parameter name verification error (#59)
+    
+    in @add_parameter_from.
+
+[33mcommit 89f1d37751f267d99594c5501a0f8f7a6e278b71[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Tue Sep 5 11:38:18 2023 +0300
+
+    Add optional singularity filesystem encryption
+    
+    and fix various problems with singularity image generation:
+     * klayout binary is included
+     * simplify install_deb_packages()
+     * no more shellcheck errors
+     * use docker in place of debootstrap
+    
+    Issue #1306
+
+[33mcommit 51817e142681e1ae3d96fb52b355b90da5866449[m
+Author: Eelis Takala <eelis@meetiqm.com>
+Date:   Mon Sep 25 14:11:15 2023 +0300
+
+    Implement elmer_n_threads
+
+[33mcommit 36852b36872c678bf6bfc98a84e3e2d13de57c4b[m[33m ([m[1;33mtag: v4.6.29[m[33m)[m
+Author: KristinnJuliusson <kristinn@meetiqm.com>
+Date:   Tue Sep 12 16:41:22 2023 +0300
+
+    insert tsvs in a method and add lithography and update lithography test
+    chips to be able to use stripes_test_increasing_width.py
+
+[33mcommit 8330d6ddd9e817c6abc93631a1f5e069b004b480[m
+Author: Andrew Guthrie <andrew.guthrie@meetiqm.com>
+Date:   Mon Sep 25 14:10:36 2023 +0300
+
+    Add parameter to disable base_metal_addition
+
+[33mcommit 82c104f231a2fa8a0365ddd7b2b0ff5349ba301d[m
+Author: Tuomas Myllari <tuomas.myllari@meetiqm.com>
+Date:   Tue Sep 19 16:00:17 2023 +0300
+
+    Refactor Elmer remote simulations
+    
+    - Option to leave a batch job running at remote without waiting for it to finish
+       using `kqc sim --remote user@host sim.py --detach`
+    - Default behaviour of console commands is unchanged, but internals refactored
+      such that disconnecting during simulation no longer cancels it
+    - obfuscated slurm job name now given run uuid  with `sbatch --job-name` command
+    - All generated scripts are deleted automatically if simulation doesnt fail
+
+[33mcommit 55a1014134ac834a7f6025fe83109d62224ebbb6[m
+Author: Jukka Räbinä <jukka@meetiqm.com>
+Date:   Thu Sep 21 22:18:51 2023 +0300
+
+    Set domain boundary as ground for wave equation simulations
+
+[33mcommit 91fbfb39d681faca391c6413962e70d0f94f078b[m
+Author: Pavel Smirnov <pavel.smirnov@meetiqm.com>
+Date:   Fri Sep 22 14:19:56 2023 +0300
+
+    Fixed bug where ground grid gets generated inside probeline in QF chip
+
+[33mcommit c5b2dd561759f943c5098ce8c54c6b09f38eeccc[m
+Author: Eelis Takala <eelis@meetiqm.com>
+Date:   Fri Sep 22 12:13:53 2023 +0300
+
+    Remove conflicting solver settings
+    
+    We remove conflicting solver settings in Elmer full wave simulations.
+    This enables parallel simulations that previously were not working.
+
+[33mcommit b051c4b8da8ff5b95fc2de0ce9fcdba1938f5980[m[33m ([m[1;33mtag: v4.6.28[m[33m)[m
+Author: Pavel Smirnov <pavel.smirnov@meetiqm.com>
+Date:   Wed Sep 20 11:58:28 2023 +0300
+
+    Optional argument `port_id_remap` introduced to `produce_n_launchers`
+    
+    - Order of launchers can be configured for sampleholders,
+      for example if launcher order needs to be mirrored
+    - Can be configured in `default_sampleholders`
+
+[33mcommit 59ef3d349e3afa354ae52a7175a08846884fbfd6[m
+Author: Tuomas Myllari <tuomas.myllari@meetiqm.com>
+Date:   Thu Sep 14 15:43:37 2023 +0300
+
+    Add E-field calculation to Elmer capacitance simulations
+
+[33mcommit 38933c757863ae3865760193b669427ec41807bc[m
+Author: Jukka Räbinä <jukka@meetiqm.com>
+Date:   Fri Aug 25 14:28:13 2023 +0300
+
+    Refactor Elmer simulations to enable multilayer geometries
+    
+    Creation of gmsh mesh is fully re-written. Use of physical groups is
+    changed, which affects to Elmer sif file creation.
+    
+    Mesh refinement is refactored in existing Elmer simulation scripts.
+    Some port refinements are removed, because there is no need to refine
+    ports in capacitance simulations.
+    
+    `Linear System Max Iterations` is increased to avoid convergence error
+    in some simulations.
+
+[33mcommit d3e8dcd22c395c8aa70bd8899c5084b23d3c1170[m
+Author: Andrew Guthrie <andrew.guthrie@meetiqm.com>
+Date:   Tue Sep 12 16:24:11 2023 +0300
+
+    Add face_id to port when launcher is created
+
+[33mcommit 4b9ffa58b8da2a5cd0437829c6baef5bf1bd415f[m
+Author: Tuomas Myllari <tuomas.myllari@meetiqm.com>
+Date:   Fri Aug 25 00:04:03 2023 +0300
+
+    Implement Elmer remote workflow and console scripts
+    
+    Implement `kqc sim --remote user@host simnames` which
+    1. Exports multiple simulations locally
+    2. Copies to a remote using `scp`
+    3. Runs all simulations on remote using SLURM workload manager
+    4. Copies results back and deletes files from remote
+    
+    To run already exported simulations on remote one can use
+    `kqc sim --remote-run-only user@host exportfolders`
+    
+    Implement `kqc singularity --build` and `kqc singularity --push user@host`
+    for building and pushing singularity image to remote
+    
+    Smaller changes:
+    
+    - Refactor Elmer simulation export
+    - Elmer write sifs as separate simulation step
+    - Add mesh_size mesh_levels option
+    - Add all participation ratios to result json
+    - Support for multiple .sif files
+    - Add documentation page for remote workflow
+
+[33mcommit 02565077235c99ae99211f02a260ee4fdefdd2ca[m
+Author: Tuomas Myllari <tuomas.myllari@meetiqm.com>
+Date:   Wed Sep 6 17:33:00 2023 +0300
+
+    Fix scaling in CapacitiveXCoupler
+
+[33mcommit 49d95ee6f9d23568d42293fc123149ac75f370c5[m
+Author: Jukka Räbinä <jukka@meetiqm.com>
+Date:   Thu Sep 7 12:01:22 2023 +0300
+
+    Fix ground TSV clearance issues
+    
+    In `_produce_ground_tsvs`, the `avoidance_to_element_region` and
+    the `avoidance_existing_tsv_region` are produced symmetrically
+    from both TSV faces.
+
+[33mcommit 9fea83773f58137b47e2f80a44b9e7ea73986ded[m
+Author: Eelis Takala <eelis@meetiqm.com>
+Date:   Thu Sep 7 10:23:12 2023 +0300
+
+    Fix several small issues that break Elmer results
+
+[33mcommit 95664103ba96aa66a128f6de40b058b9a058b11e[m
+Author: David Janzso <david@meetiqm.com>
+Date:   Thu Sep 7 08:55:01 2023 +0000
+
+    Use tmp_path pytest fixture in simulation tests
+    
+    Also make pytest work without any exceptions:
+        * do not run slow tests by default, only with --runslow
+        * disable simulations/export_and_run folder, only run when requested
+        * mark tests slower than 0.5s as "slow"
+    
+    Also minor documentation and pylint fixes.
+    
+    Issue #1261
+
+[33mcommit 54d9783816e19f91f71cfabee065b39fbf0883c4[m
+Author: Jukka Räbinä <jukka@meetiqm.com>
+Date:   Thu Aug 31 11:53:08 2023 +0300
+
+    Demonstrate functionality of `substrate_box` by demo_twoface_sim.py
+
+[33mcommit 68a5e94ac752b5e197793698b19f76b13daf7256[m
+Author: Jukka Räbinä <jukka@meetiqm.com>
+Date:   Wed Aug 30 15:46:53 2023 +0300
+
+    Allow changing substrate box sizes independently
+    
+    Substrate naming was changed to avoid naming errors in Ansys
+    
+    Remove unnecessary intersection from `ground_grid_region` function
+
+[33mcommit 3ee809d5ddbb0b0a292867e2c473240773442a2c[m
+Author: Andrew Guthrie <andrew.guthrie@meetiqm.com>
+Date:   Mon Sep 4 11:22:00 2023 +0300
+
+    ground_grid_in_trace off by default
+
+[33mcommit 994c6203de977f4688b23d09f87058b368c532db[m[33m ([m[1;33mtag: v4.6.27[m[33m)[m
+Author: Pavel Smirnov <pavel.smirnov@meetiqm.com>
+Date:   Thu Aug 17 16:57:25 2023 +0300
+
+    In XSection call allow customizable post-processing of geometry
+    
+    - Use post_processing_function to set a post-processing routine to
+    modify the cross-section geometry
+    - Use oxidise_layers_function to set a custom interface layer
+    oxidisation routine
+    - Helper functions modified to take integer formatted geometry
+    (unless outlined in docs)
+
+[33mcommit 5635dc5e394504e9da613da5a8794cf35a2ad84c[m[33m ([m[1;33mtag: v4.6.26[m[33m)[m
+Author: Pavel Smirnov <pavel.smirnov@meetiqm.com>
+Date:   Thu May 25 12:12:11 2023 +0300
+
+    Generic simulation class builder for individual elements
+
+[33mcommit 056d57ac4fad49d0cc6c54abc1bb4f07ba938a29[m
+Author: Eelis Takala <eelis@meetiqm.com>
+Date:   Mon Jun 19 15:53:33 2023 +0300
+
+    Configure adaptive meshing and singularity images
+    
+    Previous proof of concept is finalized
+      * Singularity image for Ubuntu is provided and preferred
+      * Install script for building everything is decoupled from the def
+        file
+      * Adaptive meshing is configured so that it works correctly
+    
+    Implementation issue: parallel adaptive meshing may crash at the moment

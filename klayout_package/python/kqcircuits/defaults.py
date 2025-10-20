@@ -1,4 +1,5 @@
 # This code is part of KQCircuits
+# Copyright (C) 2025 Zachary Parrott
 # Copyright (C) 2021 IQM Finland Oy
 #
 # This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
@@ -82,12 +83,12 @@ if os.name == "nt":
 
 # printed to corners of all chips and top of all masks
 # could be for example "IQM" or "A!"
-default_brand = "IQM"
+default_brand = "NIST"
 
 # default bitmap dimensions
 default_png_dimensions = (1000, 1000)
 
-default_junction_type = "Manhattan"
+default_junction_type = "Overlap"
 default_airbridge_type = "Airbridge Rectangular"
 default_fluxline_type = "Fluxline Standard"
 default_marker_type = "Marker Standard"
@@ -221,7 +222,8 @@ excluded_module_names = ()
 
 # Path to the layer configuration file, which defines layer/face related defaults.
 # The path can be either absolute or relative.
-layer_config_path = Path(__file__).parent / "layer_config" / "default_layer_config.py"
+# layer_config_path = Path(__file__).parent / "layer_config" / "default_layer_config.py"
+layer_config_path = Path(__file__).parent/"layer_config"/"ZP_layer_config.py"
 
 # Load layer/face related defaults from the layer config file
 
