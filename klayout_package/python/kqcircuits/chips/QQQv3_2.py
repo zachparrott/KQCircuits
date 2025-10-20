@@ -35,8 +35,6 @@ from kqcircuits.test_structures.junction_test_pads.junction_test_pads_simple imp
 from kqcircuits.test_structures.test_structure import TestStructure
 from kqcircuits.elements.element import Element
 
-from kqcircuits.util.groundgrid import make_grid
-
 from kqcircuits.util.library_helper import load_libraries
 
 

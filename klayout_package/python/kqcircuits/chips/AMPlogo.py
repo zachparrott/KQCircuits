@@ -29,8 +29,6 @@ from kqcircuits.util.label import produce_label, LabelOrigin
 from kqcircuits.test_structures.test_structure import TestStructure
 from kqcircuits.elements.element import Element
 
-from kqcircuits.util.groundgrid import make_grid
-
 from kqcircuits.util.library_helper import load_libraries
 
 

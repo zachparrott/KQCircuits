@@ -36,7 +36,7 @@ from kqcircuits.test_structures.junction_test_pads.junction_test_pads_simple imp
 from kqcircuits.test_structures.test_structure import TestStructure
 from kqcircuits.elements.element import Element
 
-from kqcircuits.util.groundgrid import make_grid
+from kqcircuits.util.groundgrid import insert_ground_grid
 
 from kqcircuits.util.library_helper import load_libraries
 
@@ -178,16 +178,14 @@ class ChipQQQv31(Chip):
             face_id (int): ID of the face where the grid is created
 
         """
-        grid_area = box * (1 / self.layout.dbu)
-        protection = pya.Region(self.cell.begin_shapes_rec(self.get_layer("ground_grid_avoidance", face_id))).merged()
-        grid_mag_factor = 1
-        region_ground_grid = make_grid(
-            grid_area,
-            protection,
-            grid_step=16 * (1 / self.layout.dbu) * grid_mag_factor,
-            grid_size=2 * (1 / self.layout.dbu) * grid_mag_factor,
+        insert_ground_grid(
+            target_cell=self.cell,
+            target_layer=self.face(face_id)["ground_grid"],
+            grid_area=box.to_itype(self.layout.dbu),
+            protection=self.cell.begin_shapes_rec(self.get_layer("ground_grid_avoidance", face_id)),
+            grid_step=16 * (1 / self.layout.dbu),
+            grid_size=2 * (1 / self.layout.dbu),
         )
-        self.cell.shapes(self.get_layer("ground_grid", face_id)).insert(region_ground_grid)
 
     def build(self):
         # self.produce_two_launchers(self.a_launcher, self.b_launcher, self.launcher_width, self.taper_length, self.launcher_frame_gap)
