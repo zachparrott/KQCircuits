@@ -8,11 +8,10 @@
  <doc/>
  <autorun>false</autorun>
  <autorun-early>false</autorun-early>
- <priority>0</priority>
  <shortcut/>
  <show-in-menu>true</show-in-menu>
- <group-name>misc</group-name>
  <menu-path>kqcircuits_menu.#4</menu-path>
+ <group-name>misc</group-name>
  <interpreter>python</interpreter>
  <dsl-interpreter-name/>
  <text># This code is part of KQCircuits
@@ -52,13 +51,14 @@ face = "1t1"
 grid_mag_factor = 1
 
 layout = cell.layout()
-grid_area = cell.bbox_per_layer(layout.layer(default_layers["1t1_ground_grid_avoidance"]))
-protection = pya.Region(cell.begin_shapes_rec(layout.layer(default_layers["1t1_ground_grid_avoidance"]))).merged()
-
-grid_mag_factor = 1
-region_ground_grid = make_grid(grid_area, protection,
-  grid_step = 40*(1/layout.dbu)*grid_mag_factor,
-  grid_size = 8*(1/layout.dbu)*grid_mag_factor )
-
-cell.shapes(layout.layer(default_layers["1t1_ground_grid"])).insert(region_ground_grid)</text>
+grid_area = cell.bbox_per_layer(layout.layer(default_layers[f"{face}_base_metal_gap_wo_grid"]))
+insert_ground_grid(
+    target_cell=cell,
+    target_layer=default_layers[f"{face}_ground_grid"],
+    grid_area=grid_area,
+    protection=cell.begin_shapes_rec(layout.layer(default_layers[f"{face}_ground_grid_avoidance"])),
+    grid_step=10 * (1 / layout.dbu) * grid_mag_factor,
+    grid_size=5 * (1 / layout.dbu) * grid_mag_factor,
+)
+</text>
 </klayout-macro>
