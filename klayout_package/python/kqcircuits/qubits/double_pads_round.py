@@ -25,6 +25,7 @@ from kqcircuits.elements.element import Element
 from kqcircuits.junctions.squid import Squid
 from kqcircuits.junctions.manhattan import Manhattan
 from kqcircuits.junctions.manhattan_single_junction import ManhattanSingleJunction
+from kqcircuits.junctions.overlap_junction import Overlap
 from kqcircuits.util.parameters import Param, pdt, add_parameters_from
 from kqcircuits.qubits.qubit import Qubit
 from kqcircuits.pya_resolver import pya
@@ -34,6 +35,7 @@ from kqcircuits.util.refpoints import WaveguideToSimPort, JunctionSimPort
 @add_parameters_from(Squid, junction_type="Manhattan")
 @add_parameters_from(Manhattan)
 @add_parameters_from(ManhattanSingleJunction)
+@add_parameters_from(Overlap)
 class DoublePadsRound(Qubit):
     """A two-island qubit, consisting of two rounded rectangles shunted by a junction, with one capacitive coupler.
 
