@@ -119,63 +119,99 @@ class HalfWaveResonator(Element):
 
         # fixed lengths left: 50 vert + 200 horz - 2 * turn radii on the bottom side
         # left top side: 100 vert, + 300 horz - turn radius
-        leftFixed = 50 + 200 - 2 * (pi * self.r / 2) + 100 + 300 - (pi * self.r / 2)
+        # 150 is an unknown compensation
+        leftFixed = 50 + 200 + 50 - 2 * self.r * (1 - pi / 2) + 100 + 300 - self.r * (1 - pi / 2) - 150
 
         # fixed lengths right: 50 vert + 200 horz - 2 * turn radii on the bottom side
         # top side right: 100 vert + clength/2 + 200 horz - 1* turn_radius
         # top side right contd: - 1*turn_radius + y position of qubit
-        rightFixed = 50 + 200 - 2 *(pi * self.r / 2) + 100 + (couple_length/2 + 200) - (pi*self.r / 2) 
+        # 200 is an unknonw compensation
+        rightFixed = 50 + 200 + 50 - 2 *self.r * (1 - pi / 2)  - 200
         # qubitVjog = self.refpoints[f"Q_U{index}_port_cplr"].y - (self.refpoints[f"HR_U{index}_port_resonator_b_corner"].y + 1100)
 
+        # 355 comes from current 20um qubt half ground plane dimension, to be noted when changed later
         qubitVjog = 5700 - 355 - (self.refpoints[f"HR_U{index}_port_resonator_b_corner"].y + 1100)
+        print(qubitVjog)
 
-        rightFixed += qubitVjog - (pi * self.r / 2)
+        rightFixed += qubitVjog - 2 * self.r * (1 - pi / 2) + 100 + (couple_length/2 + 200 + self.r)
 
-        # raise ValueError(qubitVjog)
+        leftNodes = [
+                Node(
+                    self.refpoints[f"HR_U{index}_port_resonator_a"],
+                    # ab_across=True,
+                ),
+                Node(self.refpoints[f"HR_U{index}_port_resonator_a_corner"]),
+                Node(
+                    (
+                        self.refpoints[f"HR_U{index}_port_resonator_a_corner"].x - 200,
+                        self.refpoints[f"HR_U{index}_port_resonator_a_corner"].y,
+                    )
+                ),
+                Node(
+                    (
+                        self.refpoints[f"HR_U{index}_port_resonator_a_corner"].x - 200,
+                        self.refpoints[f"HR_U{index}_port_resonator_a_corner"].y + 50,
+                    ),
+                    ab_across=True,
+                ),
+                Node(
+                    (
+                        self.refpoints[f"HR_U{index}_port_resonator_a_corner"].x - 200,
+                        self.refpoints[f"HR_U{index}_port_resonator_a_corner"].y + 1000,
+                    ),
+                    length_before=leftLength - leftFixed,
+                    # length_before=950,
+                    ab_across=True,
+                ),
+                Node(
+                    (
+                        self.refpoints[f"HR_U{index}_port_resonator_a_corner"].x - 200,
+                        self.refpoints[f"HR_U{index}_port_resonator_a_corner"].y + 1100,
+                    ),
+                ),
+                Node(
+                    (
+                        self.refpoints[f"HR_U{index}_port_resonator_a_corner"].x - 500,
+                        self.refpoints[f"HR_U{index}_port_resonator_a_corner"].y + 1100,
+                    ),
+                ),
+            ]
+        
 
         # left composite
-        self.insert_cell(
-            WaveguideComposite,
-            nodes = [
-                Node(self.refpoints[f"HR_U{index}_port_resonator_a"]),
-                Node(self.refpoints[f"HR_U{index}_port_resonator_a_corner"]),
-                Node((self.refpoints[f"HR_U{index}_port_resonator_a_corner"].x - 200,
-                      self.refpoints[f"HR_U{index}_port_resonator_a_corner"].y,
-                      )),
-                Node((self.refpoints[f"HR_U{index}_port_resonator_a_corner"].x - 200,
-                      self.refpoints[f"HR_U{index}_port_resonator_a_corner"].y + 50,
-                      )),
-                Node((self.refpoints[f"HR_U{index}_port_resonator_a_corner"].x - 200,
-                      self.refpoints[f"HR_U{index}_port_resonator_a_corner"].y + 1000,
-                      ),
-                     length_before= leftLength - leftFixed),
-                Node((self.refpoints[f"HR_U{index}_port_resonator_a_corner"].x - 200,
-                      self.refpoints[f"HR_U{index}_port_resonator_a_corner"].y + 1100,
-                      ),),
-                Node((self.refpoints[f"HR_U{index}_port_resonator_a_corner"].x - 500,
-                      self.refpoints[f"HR_U{index}_port_resonator_a_corner"].y + 1100,
-                      ),)
-            ],
-            term2=15
-        )  
+        layout = pya.Layout()
+        leftComposite = WaveguideComposite.create(
+            layout=layout,
+            r = self.r,
+            nodes = leftNodes,
+            term2=15,
+        )
 
-        # right composite
+        # self.insert_cell(leftComposite)
         self.insert_cell(
             WaveguideComposite,
-            nodes=[
-                Node(self.refpoints[f"HR_U{index}_port_resonator_b"]),
+            nodes=leftNodes,
+            term2=15,
+        )
+
+        rightNodes = [
+                Node(
+                    self.refpoints[f"HR_U{index}_port_resonator_b"],
+                    # ab_across=True,
+                ),
                 Node(self.refpoints[f"HR_U{index}_port_resonator_b_corner"]),
                 Node(
                     (
                         self.refpoints[f"HR_U{index}_port_resonator_b_corner"].x + 200,
                         self.refpoints[f"HR_U{index}_port_resonator_b_corner"].y,
-                    )
+                    ),
                 ),
                 Node(
                     (
                         self.refpoints[f"HR_U{index}_port_resonator_b_corner"].x + 200,
                         self.refpoints[f"HR_U{index}_port_resonator_b_corner"].y + 50,
-                    )
+                    ),
+                    ab_across=True,
                 ),
                 Node(
                     (
@@ -183,6 +219,7 @@ class HalfWaveResonator(Element):
                         self.refpoints[f"HR_U{index}_port_resonator_b_corner"].y + 1000,
                     ),
                     length_before=rightLength - rightFixed,
+                    ab_across=True,
                 ),
                 Node(
                     (
@@ -204,9 +241,27 @@ class HalfWaveResonator(Element):
                     # (self._compute_hanger_location(position), 5700 - 355)
                     (3750, 5700 - 355)
                 ),
-            ],
+            ]
+
+        # right composite
+        rightComposite = WaveguideComposite.create(
+            layout=layout, r = self.r, 
+            nodes=rightNodes,
             term2=15,
         )
+
+        self.insert_cell(
+            WaveguideComposite,
+            nodes=rightNodes,
+            term2=15,
+        )
+
+        # print(leftFixed, rightFixed)
+        # print(leftLength - leftFixed, rightLength - rightFixed)
+        # print("leftc", sum(leftComposite.segment_lengths()))
+        # print("rightc", sum(rightComposite.segment_lengths()))
+
+        print("total", sum(leftComposite.segment_lengths()) + sum(rightComposite.segment_lengths()) + hangerLength)
 
     def _readout_resonator_D(self, index, resonator_length, position, couple_length, qubit_load):
         # positioning split between the coupling sides
@@ -221,14 +276,14 @@ class HalfWaveResonator(Element):
 
         # fixed lengths left: 50 vert + 200 horz - 2 * turn radii on the bottom side
         # left top side: 100 vert, + 300 horz - turn radius
-        leftFixed = 50 + 200 - 2 * (pi * self.r / 2) + 100 + 300 - (pi * self.r / 2)
+        leftFixed = 50 + 200 - 2 * self.r * (1 - pi / 2) + 100 + 300 - self.r * (1 - pi / 2)
 
         # fixed lengths right: 50 vert + 200 horz - 2 * turn radii on the bottom side
         # top side right: 100 vert + clength/2 + 200 horz - 1* turn_radius
         # top side right contd: - 1*turn_radius + y position of qubit
-        rightFixed = 50 + 200 - 2 *(pi * self.r / 2) + 100 + (couple_length/2 + 200) - (pi*self.r / 2) 
+        rightFixed = 50 + 200 - 2 *self.r * (1 - pi / 2) + 100 + (couple_length/2 + 200) - self.r * (1 - pi / 2)
         qubitVjog = -1 * (self.refpoints[f"Q_D{index}_port_cplr"].y - (self.refpoints[f"HR_D{index}_port_resonator_a_corner"].y - 1100))
-        rightFixed += qubitVjog - (pi * self.r / 2)
+        rightFixed += qubitVjog - self.r * (1 - pi / 2)
 
         # left composite non qubit side
         self.insert_cell(
