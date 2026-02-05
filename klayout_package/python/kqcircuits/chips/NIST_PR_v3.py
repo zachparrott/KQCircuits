@@ -91,10 +91,10 @@ class NISTpart3(Chip):
             left_ref_names = ["W_port"]
             right_ref_names = []
             for i in range(4):
-                left_ref_names.append(f"HR_U{i}_port_sim_b")
-                left_ref_names.append(f"HR_D{i}_port_sim_a")
-                right_ref_names.append(f"HR_U{i}_port_sim_a")
-                right_ref_names.append(f"HR_D{i}_port_sim_b")
+                left_ref_names.append(f"HR_U{i}_port_b")
+                left_ref_names.append(f"HR_D{i}_port_a")
+                right_ref_names.append(f"HR_U{i}_port_a")
+                right_ref_names.append(f"HR_D{i}_port_b")
             right_ref_names.append("E_port")
 
         for i in range(9):

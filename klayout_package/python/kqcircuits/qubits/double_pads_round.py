@@ -46,6 +46,7 @@ class DoublePadsRound(Qubit):
     """
 
     ground_gap = Param(pdt.TypeList, "Width, height of the ground gap (µm, µm)", [700, 700])
+    ground_coupler_extend = Param(pdt.TypeDouble, "Extend coupler side ground edge.", 0, unit="μm")
     ground_gap_r = Param(pdt.TypeDouble, "Ground gap rounding radius", 50, unit="μm")
     coupler_extent = Param(pdt.TypeList, "Width, height of the coupler (µm, µm)", [150, 20])
     coupler_r = Param(pdt.TypeDouble, "Coupler rounding radius", 10, unit="μm")
@@ -71,10 +72,10 @@ class DoublePadsRound(Qubit):
 
         # Qubit base
         ground_gap_points = [
-            pya.DPoint(float(self.ground_gap[0]) / 2,  float(self.ground_gap[1]) / 2),
+            pya.DPoint(float(self.ground_gap[0]) / 2,  float(self.ground_gap[1]) / 2 + self.ground_coupler_extend),
             pya.DPoint(float(self.ground_gap[0]) / 2, -float(self.ground_gap[1]) / 2),
             pya.DPoint(-float(self.ground_gap[0]) / 2, -float(self.ground_gap[1]) / 2),
-            pya.DPoint(-float(self.ground_gap[0]) / 2,  float(self.ground_gap[1]) / 2),
+            pya.DPoint(-float(self.ground_gap[0]) / 2,  float(self.ground_gap[1]) / 2 + self.ground_coupler_extend),
         ]
         ground_gap_polygon = pya.DPolygon(ground_gap_points)
         ground_gap_region = pya.Region(ground_gap_polygon.to_itype(self.layout.dbu))
@@ -124,7 +125,7 @@ class DoublePadsRound(Qubit):
         self.cell.shapes(self.get_layer("ground_grid_avoidance")).insert(protection_region)
 
         # Coupler port
-        self.add_port("cplr", pya.DPoint(0, float(self.ground_gap[1]) / 2),
+        self.add_port("cplr", pya.DPoint(0, float(self.ground_gap[1]) / 2 + self.ground_coupler_extend),
                       direction=pya.DVector(pya.DPoint(0, float(self.ground_gap[1]))))
 
         # Drive port
@@ -142,8 +143,8 @@ class DoublePadsRound(Qubit):
         coupler_region = pya.Region(coupler_polygon.to_itype(self.layout.dbu))
         coupler_region.round_corners(self.coupler_r / self.layout.dbu, self.coupler_r / self.layout.dbu, self.n)
         coupler_path_polygon = pya.DPolygon([
-            pya.DPoint(-self.coupler_a / 2, (float(self.ground_gap[1]) / 2)),
-            pya.DPoint(self.coupler_a / 2, (float(self.ground_gap[1]) / 2)),
+            pya.DPoint(-self.coupler_a / 2, (float(self.ground_gap[1]) / 2) + self.ground_coupler_extend),
+            pya.DPoint(self.coupler_a / 2, (float(self.ground_gap[1]) / 2) + self.ground_coupler_extend),
             pya.DPoint(self.coupler_a / 2, coupler_top_edge),
             pya.DPoint(-self.coupler_a / 2, coupler_top_edge),
         ])
@@ -190,4 +191,4 @@ class DoublePadsRound(Qubit):
 
     @classmethod
     def get_sim_ports(cls, simulation):
-        return [JunctionSimPort(), WaveguideToSimPort("port_cplr", side="top")]
+        return [JunctionSimPort(floating=True), WaveguideToSimPort("port_cplr", side="top")]

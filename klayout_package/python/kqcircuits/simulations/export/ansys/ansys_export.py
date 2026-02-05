@@ -110,10 +110,10 @@ def export_ansys_bat(
     with open(bat_filename, "w", encoding="utf-8") as file:
         file.write(
             "@echo off\n"
-            r'powershell -Command "Get-Process | Where-Object {$_.MainWindowTitle -like \"Run Simulations*\"} '
+            r'powershell -NoProfile -Command "Get-Process | Where-Object {$_.MainWindowTitle -like \"Run Simulations*\"} '
             '| Select -ExpandProperty Id | Export-Clixml -path blocking_pids.xml"\n'
             "title Run Simulations\n"
-            'powershell -Command "$sim_pids = Import-Clixml -Path blocking_pids.xml; if ($sim_pids) '
+            'powershell -NoProfile -Command "$sim_pids = Import-Clixml -Path blocking_pids.xml; if ($sim_pids) '
             r"{ echo \"Waiting for $sim_pids\"; Wait-Process $sim_pids -ErrorAction SilentlyContinue }; "
             'Remove-Item blocking_pids.xml"\n'
         )

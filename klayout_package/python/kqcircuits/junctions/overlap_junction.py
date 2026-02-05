@@ -18,12 +18,10 @@
 # Contributions are made under the IQM Individual Contributor License Agreement.
 # For more information, see: https://meetiqm.com/iqm-individual-contributor-license-agreement
 
-
-from math import sqrt
 from kqcircuits.pya_resolver import pya
 from kqcircuits.util.parameters import Param, pdt
 from kqcircuits.junctions.junction import Junction
-from kqcircuits.util.symmetric_polygons import polygon_with_vsym, polygon_with_hsym
+from kqcircuits.util.symmetric_polygons import polygon_with_vsym
 
 
 class Overlap(Junction):

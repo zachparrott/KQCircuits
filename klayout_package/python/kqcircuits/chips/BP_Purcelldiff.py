@@ -23,18 +23,16 @@ from kqcircuits.pya_resolver import pya
 from kqcircuits.elements.element import Element
 from kqcircuits.chips.chip import Chip
 from kqcircuits.elements.chip_frame import ChipFrame
-from kqcircuits.util.parameters import Param, pdt, add_parameters_from, add_parameter
+from kqcircuits.util.parameters import Param, pdt, add_parameters_from
 from kqcircuits.elements.launcher import Launcher
 from kqcircuits.elements.waveguide_coplanar import WaveguideCoplanar
 from kqcircuits.elements.waveguide_composite import WaveguideComposite, Node
 from kqcircuits.elements.hanger_resonator import HangerResonator
-from kqcircuits.elements.meander import Meander
-
-from kqcircuits.util.refpoints import WaveguideToSimPort
 
 from kqcircuits.qubits.double_pads import DoublePads
-from kqcircuits.qubits.double_pads_round import DoublePadsRound
-from kqcircuits.qubits.finger_pads_jj import FingerPadsJJ
+
+from kqcircuits.qubits.double_pads_diff import DoublePadsDifferential
+
 
 from kqcircuits.elements.smooth_capacitor import SmoothCapacitor
 
@@ -51,7 +49,7 @@ from kqcircuits.elements.smooth_capacitor import SmoothCapacitor
     name_chip="",
     name_copy="",
 )
-class PurcellQubits(Chip):
+class PurcellQubits2(Chip):
     # parameters accessible in PCell
     filter_only = Param(pdt.TypeBoolean, "Exclude qubits and resonators.", False)
     a_launcher = Param(pdt.TypeDouble, "Pad CPW trace center", 200, unit="μm")
@@ -67,18 +65,26 @@ class PurcellQubits(Chip):
     filter_length = Param(pdt.TypeDouble, "CPW t-line half wavelength for filter resonator.", 8655, unit="μm")
     center_length = Param(pdt.TypeDouble, "Center to center spacing of capacitors.", 4700, unit="μm")
 
-    lengthIN = Param(pdt.TypeDouble, "Length compensation for input capacitance.", 786, unit="μm")
+    lengthIN = Param(pdt.TypeDouble, "Length compensation for input caxpacitance.", 786, unit="μm")
     lengthOUT = Param(pdt.TypeDouble, "Length compensation for output capacitance.", 1770, unit="μm")
 
     lockout_length = Param(pdt.TypeDouble, "Exclusion region on x-axis for start of meanders.", 4000, unit="μm")
 
+    qubit_cplr_y_spacing = Param(
+        pdt.TypeDouble,
+        "Offset of qubit coupler corner from chip centerline.",
+        1500,
+        unit="μm",
+    )
+    readout_spine_extra = Param(pdt.TypeDouble, "Extra offset from qubit coupler corner to readout spine.", 100, unit="μm")
+
     filter_positions = Param(
         pdt.TypeList, "Fractional position of resonators along the bandpass resonator length.", [0.3, 0.433, 0.566, 0.7]
     )
-    resonator_lengths = Param(pdt.TypeList, "Readout resonators length in um.", [9000, 9000, 9000, 8000])
-    resonator_couplings = Param(pdt.TypeList, "Readout coupling length in um.", [100, 340, 340, 200])
+    resonator_lengths = Param(pdt.TypeList, "Readout resonators length in um.", [8600, 8600, 8600, 8600])
+    resonator_couplings = Param(pdt.TypeList, "Readout coupling length in um.", [300, 300, 300, 300])
 
-    qubit_loading = Param(pdt.TypeList, "Resonator length to subtract on qubit loaded side in um.", [0, 0, 0, 0])
+    qubit_loading = Param(pdt.TypeList, "Resonator length to subtract on qubit loaded side in um.", [100, 50, 0, 100])
     balance_correction = Param(pdt.TypeList, "Balance correction factor for resonator coupling roll.", [1.0, 1.0, 1.0, 1.0])
 
     # radius
@@ -140,6 +146,46 @@ class PurcellQubits(Chip):
     def _compute_hanger_location(self, position):
 
         return 3750 - self.filter_length / 2 + position * self.filter_length
+
+    def _qubit_align_refpoint_name(self, qubit_refpoints):
+        if "port_cplr_corner" in qubit_refpoints:
+            return "port_cplr_corner"
+        if "port_cplr" in qubit_refpoints:
+            return "port_cplr"
+        raise ValueError("Qubit must define a port_cplr refpoint.")
+
+    def _qubit_coupler_ref_name(self, inst_prefix):
+        corner = f"{inst_prefix}_port_cplr_corner"
+        if corner in self.refpoints:
+            return corner
+        return f"{inst_prefix}_port_cplr"
+
+    def _readout_spine_y(self, side, base_y):
+        sign = 1 if side == "U" else -1
+        spine_y = base_y + sign * (self.qubit_cplr_y_spacing - self.readout_spine_extra)
+        return spine_y
+
+    def _readout_base_y(self, side, index):
+        return self.refpoints[f"HR_{side}{index}_port_b_corner"].y
+
+    def _qubit_target_point(self, side, index, position):
+        base_y = self._readout_base_y(side, index)
+        sign = 1 if side == "U" else -1
+        target_y = base_y + sign * self.qubit_cplr_y_spacing
+        target_x = self._compute_hanger_location(position)
+        return pya.DPoint(target_x, target_y)
+
+    def _qubit_approach_nodes(self, side, index, spine_y):
+        inst_prefix = f"Q_{side}{index}"
+        corner_name = self._qubit_coupler_ref_name(inst_prefix)
+        corner = self.refpoints[corner_name]
+        port = self.refpoints[f"{inst_prefix}_port_cplr"]
+        nodes = []
+        if abs(spine_y - corner.y) > 1e-6:
+            nodes.append(Node((corner.x, spine_y)))
+        nodes.append(Node(corner, ab_across=True))
+        nodes.append(Node(port))
+        return nodes
 
     def _produce_readout_hangers(self):
 
@@ -206,16 +252,17 @@ class PurcellQubits(Chip):
         # top side right contd: - 1*turn_radius + y position of qubit
         # 200 is an unknonw compensation
         rightFixed = 50 + 200 + 50 - 2 * self.r * (1 - pi / 2) - 200
-        qubitVjog = self.refpoints[f"Q_U{index}_port_cplr"].y - (
-            self.refpoints[f"HR_U{index}_port_resonator_b_corner"].y + 1100
-        )
-
-        # 355 comes from current 20um qubt half ground plane dimension, to be noted when changed later
-        # qubitVjog = 5700 - 355 - (self.refpoints[f"HR_U{index}_port_resonator_b_corner"].y + 1100)
-        print(qubitVjog)
+        qubit_port = self.refpoints[f"Q_U{index}_port_cplr"]
+        qubit_corner = self.refpoints[self._qubit_coupler_ref_name(f"Q_U{index}")]
+        qubitVjog = qubit_port.y - qubit_corner.y
 
         rightFixed += qubitVjog - 2 * self.r * (1 - pi / 2) + 100 + (couple_length / 2 + 200 + self.r)
 
+        base_y = self._readout_base_y("U", index)
+        spine_y = self._readout_spine_y("U", base_y)
+        meander_y = spine_y - 2 * self.r
+
+        # left composite
         leftNodes = [
             Node(
                 self.refpoints[f"HR_U{index}_port_resonator_a"],
@@ -237,7 +284,7 @@ class PurcellQubits(Chip):
             Node(
                 (
                     self.refpoints[f"HR_U{index}_port_resonator_a_corner"].x - 200,
-                    self.refpoints[f"HR_U{index}_port_resonator_a_corner"].y + 1000,
+                    meander_y,
                 ),
                 length_before=leftLength - leftFixed,
                 ab_across=True,
@@ -245,13 +292,13 @@ class PurcellQubits(Chip):
             Node(
                 (
                     self.refpoints[f"HR_U{index}_port_resonator_a_corner"].x - 200,
-                    self.refpoints[f"HR_U{index}_port_resonator_a_corner"].y + 1100,
+                    spine_y,
                 ),
             ),
             Node(
                 (
                     self.refpoints[f"HR_U{index}_port_resonator_a_corner"].x - 500,
-                    self.refpoints[f"HR_U{index}_port_resonator_a_corner"].y + 1100,
+                    spine_y,
                 ),
             ),
         ]
@@ -284,7 +331,7 @@ class PurcellQubits(Chip):
             Node(
                 (
                     self.refpoints[f"HR_U{index}_port_resonator_b_corner"].x + 200,
-                    self.refpoints[f"HR_U{index}_port_resonator_b_corner"].y + 1000,
+                    meander_y,
                 ),
                 length_before=rightLength - rightFixed,
                 ab_across=True,
@@ -292,17 +339,10 @@ class PurcellQubits(Chip):
             Node(
                 (
                     self.refpoints[f"HR_U{index}_port_resonator_b_corner"].x + 200,
-                    self.refpoints[f"HR_U{index}_port_resonator_b_corner"].y + 1100,
+                    spine_y,
                 ),
             ),
-            Node(
-                (
-                    self.refpoints[f"Q_U{index}_port_cplr_corner"].x,
-                    self.refpoints[f"HR_U{index}_port_resonator_b_corner"].y + 1100,
-                ),
-            ),
-            Node(self.refpoints[f"Q_U{index}_port_cplr_corner"], ab_across=True),
-            Node(self.refpoints[f"Q_U{index}_port_cplr"]),
+            *self._qubit_approach_nodes("U", index, spine_y),
         ]
 
         self.insert_cell(
@@ -335,100 +375,100 @@ class PurcellQubits(Chip):
         # top side right contd: - 1*turn_radius + y position of qubit
         # 200 is an unknonw compensation
         rightFixed = 50 + 200 + 50 - 2 * self.r * (1 - pi / 2) - 200
-        qubitVjog = -1 * (
-            self.refpoints[f"Q_D{index}_port_cplr"].y
-            - (self.refpoints[f"HR_D{index}_port_resonator_a_corner"].y - 1100)
-        )
+        qubit_port = self.refpoints[f"Q_D{index}_port_cplr"]
+        qubit_corner = self.refpoints[self._qubit_coupler_ref_name(f"Q_D{index}")]
+        qubitVjog = qubit_port.y - qubit_corner.y
 
         rightFixed += qubitVjog - 2 * self.r * (1 - pi / 2) + 100 + (couple_length / 2 + 200 + self.r)
 
-        # left composite non qubit side
+        base_y = self._readout_base_y("D", index)
+        spine_y = self._readout_spine_y("D", base_y)
+        meander_y = spine_y + 2 * self.r
+
+        # left composite
+        leftNodes = [
+            Node(self.refpoints[f"HR_D{index}_port_resonator_b"]),
+            Node(self.refpoints[f"HR_D{index}_port_resonator_b_corner"]),
+            Node(
+                (
+                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 200,
+                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].y,
+                )
+            ),
+            Node(
+                (
+                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 200,
+                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].y - 50,
+                ),
+                ab_across=True,
+            ),
+            Node(
+                (
+                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 200,
+                    meander_y,
+                ),
+                length_before=leftLength - leftFixed,
+                meander_direction=-1,
+                ab_across=True,
+            ),
+            Node(
+                (
+                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 200,
+                    spine_y,
+                ),
+            ),
+            Node(
+                (
+                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 500,
+                    spine_y,
+                ),
+            ),
+        ]
+
         self.insert_cell(
             WaveguideComposite,
-            nodes=[
-                Node(self.refpoints[f"HR_D{index}_port_resonator_b"]),
-                Node(self.refpoints[f"HR_D{index}_port_resonator_b_corner"]),
-                Node(
-                    (
-                        self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 200,
-                        self.refpoints[f"HR_D{index}_port_resonator_b_corner"].y,
-                    )
-                ),
-                Node(
-                    (
-                        self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 200,
-                        self.refpoints[f"HR_D{index}_port_resonator_b_corner"].y - 50,
-                    ),
-                    ab_across=True,
-                ),
-                Node(
-                    (
-                        self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 200,
-                        self.refpoints[f"HR_D{index}_port_resonator_b_corner"].y - 1000,
-                    ),
-                    length_before=leftLength - leftFixed,
-                    meander_direction=-1,
-                    ab_across=True,
-                ),
-                Node(
-                    (
-                        self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 200,
-                        self.refpoints[f"HR_D{index}_port_resonator_b_corner"].y - 1100,
-                    ),
-                ),
-                Node(
-                    (
-                        self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 500,
-                        self.refpoints[f"HR_D{index}_port_resonator_b_corner"].y - 1100,
-                    ),
-                ),
-            ],
+            nodes=leftNodes,
             term2=15,
         )
 
-        # right qubit side composite
+        # right composite
+        rightNodes = [
+            Node(self.refpoints[f"HR_D{index}_port_resonator_a"]),
+            Node(self.refpoints[f"HR_D{index}_port_resonator_a_corner"]),
+            Node(
+                (
+                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x + 200,
+                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].y,
+                )
+            ),
+            Node(
+                (
+                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x + 200,
+                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].y - 50,
+                ),
+                ab_across=True,
+            ),
+            Node(
+                (
+                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x + 200,
+                    meander_y,
+                ),
+                length_before=rightLength - rightFixed,
+                meander_direction=-1,
+                ab_across=True,
+            ),
+            Node(
+                (
+                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x + 200,
+                    spine_y,
+                ),
+            ),
+            *self._qubit_approach_nodes("D", index, spine_y),
+        ]
+
         self.insert_cell(
             WaveguideComposite,
-            nodes=[
-                Node(self.refpoints[f"HR_D{index}_port_resonator_a"]),
-                Node(self.refpoints[f"HR_D{index}_port_resonator_a_corner"]),
-                Node(
-                    (
-                        self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x + 200,
-                        self.refpoints[f"HR_D{index}_port_resonator_a_corner"].y,
-                    )
-                ),
-                Node(
-                    (
-                        self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x + 200,
-                        self.refpoints[f"HR_D{index}_port_resonator_a_corner"].y - 50,
-                    ),
-                    ab_across=True,
-                ),
-                Node(
-                    (
-                        self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x + 200,
-                        self.refpoints[f"HR_D{index}_port_resonator_a_corner"].y - 1000,
-                    ),
-                    length_before=rightLength - rightFixed,
-                    meander_direction=-1,
-                    ab_across=True,
-                ),
-                Node(
-                    (
-                        self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x + 200,
-                        self.refpoints[f"HR_D{index}_port_resonator_a_corner"].y - 1100,
-                    ),
-                ),
-                Node(
-                    (
-                        self.refpoints[f"Q_D{index}_port_cplr_corner"].x,
-                        self.refpoints[f"HR_D{index}_port_resonator_a_corner"].y - 1100,
-                    ),
-                ),
-                Node(self.refpoints[f"Q_D{index}_port_cplr_corner"], ab_across=True),
-                Node(self.refpoints[f"Q_D{index}_port_cplr"]),
-            ],
+            nodes=rightNodes,
         )
 
     def build(self):
@@ -535,8 +575,8 @@ class PurcellQubits(Chip):
 
             # prob error for 0 length
             if len(self.filter_positions) < 2:
-                left_ref_names.append(f"HR_U0_port_b")
-                right_ref_names.append(f"HR_U0_port_a")
+                left_ref_names.append("HR_U0_port_b")
+                right_ref_names.append("HR_U0_port_a")
                 right_ref_names.append("Meander_Cout_port_b")
 
             else:
@@ -560,119 +600,131 @@ class PurcellQubits(Chip):
                     inst_name=f"cpw_section_{i}",
                 )
 
-            # qubit positioning coordinates
-            U_coords = []
-            D_coords = []
+            u_positions = [pos for i, pos in enumerate(self.filter_positions) if i % 2 == 0]
+            d_positions = [pos for i, pos in enumerate(self.filter_positions) if i % 2 == 1]
 
-            for i, pos in enumerate(self.filter_positions):
-                if i % 2:
-                    # top row positioning
-                    D_coords.append(pya.DTrans(0, False, self._compute_hanger_location(pos) + 0 * 500, 1800))
-                else:
-                    # bottom row positioning
-                    U_coords.append(pya.DTrans(2, False, self._compute_hanger_location(pos) + 0 * 500, 5700))
-
-            # Qubit U3: 20 um gap "MOD D" participation. done
+            pad_widths = [783.4, 805.9, 827.7, 849.9]
+            coupler_heights = [284.5, 333.7, 396.3, 465.9]
+            island_gap = 70.0
+            coupler_offset = 10.0
+            
+            common_params = {
+                "ground_gap_r": 10.0,
+                "coupler_r": 10.0,
+                "coupler_offset": coupler_offset,
+                "island1_r": 10.0,
+                "island2_r": 10.0,
+                "drive_position": ["-450", "0"],
+                "junction_type": "Overlap",
+                "base_metal_separation": 8,
+                "with_squid": True,
+                "island1_taper_width": 50,
+                "island1_taper_junction_width": 25,
+                "island2_taper_width": 50,
+                "island2_taper_junction_width": 25,
+            }
+            
+            # Qubit U0
             try:
+                qubit_cell, qubit_ref = DoublePadsDifferential.create_with_refpoints(
+                    self.layout,
+                    library=self.LIBRARY_NAME,
+                    island1_extent=[pad_widths[0] - 400, 300],
+                    island2_extent=[pad_widths[0], 300],
+                    island_island_gap=island_gap,
+                    ground_gap=[
+                        pad_widths[0] + 100,
+                        2 * (300 + 1 / 2 * island_gap + 50),
+                    ],
+                    coupler_extent=[100, coupler_heights[0]],
+                    ground_coupler_extend=coupler_heights[0] + 100 + coupler_offset,
+                    **common_params,
+                )
+                align_ref = self._qubit_align_refpoint_name(qubit_ref)
                 self.insert_cell(
-                    DoublePads,
-                    U_coords[0],
-                    f"Q_U0",
-                    ground_gap=["1200", "710"],
-                    ground_gap_r=0.0,
-                    coupler_extent=["209", "20"],
-                    coupler_r=0.0,
-                    coupler_offset=50.0,
-                    island1_extent=["752", "120"],
-                    island1_r=0.0,
-                    island2_extent=["752", "120"],
-                    island2_r=0.0,
-                    drive_position=["-450", "0"],
-                    island_island_gap=20.0,
-                    _parameters='{"junction_type": "Sim"}',
-                    with_squid=False,
-                    island1_taper_width=0,
-                    island1_taper_junction_width=0,
-                    island2_taper_width=0,
-                    island2_taper_junction_width=0,
+                    qubit_cell,
+                    trans=pya.DTrans(2, False, 0, 0),
+                    inst_name="Q_U0",
+                    align_to=self._qubit_target_point("U", 0, u_positions[0]),
+                    align=align_ref,
                 )
             except IndexError:
                 print("Qubit index not requested based on resonator length array.")
 
             try:
+                qubit_cell, qubit_ref = DoublePadsDifferential.create_with_refpoints(
+                    self.layout,
+                    library=self.LIBRARY_NAME,
+                    island1_extent=[pad_widths[1] - 400, 300],
+                    island2_extent=[pad_widths[1], 300],
+                    island_island_gap=island_gap,
+                    ground_gap=[
+                        pad_widths[1] + 100,
+                        2 * (300 + 1 / 2 * island_gap + 50),
+                    ],
+                    coupler_extent=[100, coupler_heights[1]],
+                    ground_coupler_extend=coupler_heights[1] + 100 + coupler_offset,
+                    **common_params,
+                )
+                align_ref = self._qubit_align_refpoint_name(qubit_ref)
                 self.insert_cell(
-                    DoublePads,
-                    U_coords[1],
-                    f"Q_U1",
-                    ground_gap=["1200", "710"],
-                    ground_gap_r=0.0,
-                    coupler_extent=["209", "20"],
-                    coupler_r=0.0,
-                    coupler_offset=50.0,
-                    island1_extent=["752", "120"],
-                    island1_r=0.0,
-                    island2_extent=["752", "120"],
-                    island2_r=0.0,
-                    drive_position=["-450", "0"],
-                    island_island_gap=20.0,
-                    _parameters='{"junction_type": "Sim"}',
-                    with_squid=False,
-                    island1_taper_width=0,
-                    island1_taper_junction_width=0,
-                    island2_taper_width=0,
-                    island2_taper_junction_width=0,
+                    qubit_cell,
+                    trans=pya.DTrans(2, False, 0, 0),
+                    inst_name="Q_U1",
+                    align_to=self._qubit_target_point("U", 1, u_positions[1]),
+                    align=align_ref,
                 )
             except IndexError:
                 print("Qubit index not requested based on resonator length array.")
 
             try:
+                qubit_cell, qubit_ref = DoublePadsDifferential.create_with_refpoints(
+                    self.layout,
+                    library=self.LIBRARY_NAME,
+                    island1_extent=[pad_widths[2] - 400, 300],
+                    island2_extent=[pad_widths[2], 300],
+                    island_island_gap=island_gap,
+                    ground_gap=[
+                        pad_widths[2] + 100,
+                        2 * (300 + 1 / 2 * island_gap + 50),
+                    ],
+                    coupler_extent=[100, coupler_heights[2]],
+                    ground_coupler_extend=coupler_heights[2] + 100 + coupler_offset,
+                    **common_params,
+                )
+                align_ref = self._qubit_align_refpoint_name(qubit_ref)
                 self.insert_cell(
-                    DoublePads,
-                    D_coords[0],
-                    f"Q_D0",
-                    ground_gap=["1200", "710"],
-                    ground_gap_r=0.0,
-                    coupler_extent=["209", "20"],
-                    coupler_r=0.0,
-                    coupler_offset=50.0,
-                    island1_extent=["752", "120"],
-                    island1_r=0.0,
-                    island2_extent=["752", "120"],
-                    island2_r=0.0,
-                    drive_position=["-450", "0"],
-                    island_island_gap=20.0,
-                    _parameters='{"junction_type": "Sim"}',
-                    with_squid=False,
-                    island1_taper_width=0,
-                    island1_taper_junction_width=0,
-                    island2_taper_width=0,
-                    island2_taper_junction_width=0,
+                    qubit_cell,
+                    trans=pya.DTrans(0, False, 0, 0),
+                    inst_name="Q_D0",
+                    align_to=self._qubit_target_point("D", 0, d_positions[0]),
+                    align=align_ref,
                 )
             except IndexError:
                 print("Qubit index not requested based on resonator length array.")
 
             try:
+                qubit_cell, qubit_ref = DoublePadsDifferential.create_with_refpoints(
+                    self.layout,
+                    library=self.LIBRARY_NAME,
+                    island1_extent=[pad_widths[3] - 400, 300],
+                    island2_extent=[pad_widths[3], 300],
+                    island_island_gap=island_gap,
+                    ground_gap=[
+                        pad_widths[3] + 100,
+                        2 * (300 + 1 / 2 * island_gap + 50),
+                    ],
+                    coupler_extent=[100, coupler_heights[3]],
+                    ground_coupler_extend=coupler_heights[3] + 100 + coupler_offset,
+                    **common_params,
+                )
+                align_ref = self._qubit_align_refpoint_name(qubit_ref)
                 self.insert_cell(
-                    DoublePads,
-                    D_coords[1],
-                    f"Q_D1",
-                    ground_gap=["1200", "710"],
-                    ground_gap_r=0.0,
-                    coupler_extent=["209", "20"],
-                    coupler_r=0.0,
-                    coupler_offset=50.0,
-                    island1_extent=["752", "120"],
-                    island1_r=0.0,
-                    island2_extent=["752", "120"],
-                    island2_r=0.0,
-                    drive_position=["-450", "0"],
-                    island_island_gap=20.0,
-                    _parameters='{"junction_type": "Sim"}',
-                    with_squid=False,
-                    island1_taper_width=0,
-                    island1_taper_junction_width=0,
-                    island2_taper_width=0,
-                    island2_taper_junction_width=0,
+                    qubit_cell,
+                    trans=pya.DTrans(0, False, 0, 0),
+                    inst_name="Q_D1",
+                    align_to=self._qubit_target_point("D", 1, d_positions[1]),
+                    align=align_ref,
                 )
             except IndexError:
                 print("Qubit index not requested based on resonator length array.")
