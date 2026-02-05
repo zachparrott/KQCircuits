@@ -86,6 +86,10 @@ class Refpoints:
         """Returns a list of positions."""
         return self.dict().values()
 
+    def get(self, key, default=None):
+        """Get value under `key` if it exists, otherwise return `default`"""
+        return self[key] if key in self else default
+
 
 class RefpointToSimPort:
     """Class that takes a refpoint of an Element class with given string
@@ -235,10 +239,7 @@ class WaveguideToSimPort(RefpointToSimPort):
 
 
 class JunctionSimPort(RefpointToSimPort):
-    """Creates internal ports for a junction in the Simulation object.
-
-    Depending on the value of the `separate_island_internal_ports` parameter, will either create
-    two internal ports at both ends of the junction, or one port that covers both junctions.
+    """Creates internal port for a junction in the Simulation object.
 
     Attributes:
         refpoint: Refpoint name string. Defaults to "port_squid_a" as most commonly used junction port name

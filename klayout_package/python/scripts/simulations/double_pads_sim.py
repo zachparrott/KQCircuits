@@ -47,7 +47,6 @@ for sim_tool in sim_tools:
         "use_ports": True,
         "face_stack": ["1t1"],
         "box": pya.DBox(pya.DPoint(0, 0), pya.DPoint(2000, 2000)),
-        "separate_island_internal_ports": sim_tool != "eigenmode",  # DoublePads specific
         "tls_layer_thickness": 5e-3 if sim_tool == "eigenmode" else 0.0,  # in µm
         "tls_sheet_approximation": sim_tool == "eigenmode",
         "waveguide_length": 200,
@@ -122,8 +121,8 @@ for sim_tool in sim_tools:
         "workflow": {
             "python_executable": "python",
             "n_workers": 4,
-            "elmer_n_processes": 4,
-            "gmsh_n_threads": 4,
+            "elmer_n_processes": -1,
+            "gmsh_n_threads": -1,
             "elmer_n_threads": 1,
         },
         "mesh_size": {

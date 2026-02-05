@@ -79,7 +79,8 @@ def write_simulation_machine_versions_file(path: Path) -> None:
 def run_elmer_grid(msh_path: Path | str, n_processes: int, exec_path_override: Path | None = None) -> None:
     """Run ElmerGrid to process meshes from .msh format to Elmer's mesh format. Partitions mesh if n_processes > 1"""
     mesh_dir = Path(msh_path).stem
-    if Path(mesh_dir).joinpath("mesh.elements").exists():
+    mesh_exists_identifier = f"partitioning.{n_processes}" if n_processes > 1 else "mesh.elements"
+    if Path(mesh_dir).joinpath(mesh_exists_identifier).exists():
         logging.info(f"Reusing existing mesh from {str(mesh_dir)}/")
         return
     elmergrid_executable = shutil.which("ElmerGrid")
@@ -143,20 +144,15 @@ def worker(command: str, outfile: Path | str, cwd: Path | str, env: dict) -> int
     Returns:
         Exit code of the process
     """
-    is_windows = os.name == "nt"
     try:
         if outfile is not None:
             with open(outfile, "w", encoding="utf-8") as f:
-                return subprocess.check_call(
-                    ["bash", command] if is_windows else command, stdout=f, stderr=f, text=True, env=env, cwd=cwd
-                )
+                return subprocess.check_call(command, stdout=f, stderr=f, text=True, env=env, cwd=cwd)
         else:
-            return subprocess.check_call(["bash", command] if is_windows else command, text=True, env=env, cwd=cwd)
+            return subprocess.check_call(command, text=True, env=env, cwd=cwd)
     except subprocess.CalledProcessError as err:
         logging.warning(f"The worker for {err.cmd} exited with code {err.returncode}")
         logging.warning(err)
-        if is_windows and "is not recognized as an internal or external command" in err.stderr:
-            logging.warning("Do you have Bash (e.g. Git Bash or MSYS2) installed?")
         return err.returncode
 
 
@@ -274,7 +270,7 @@ def _run_elmer_solver(
     sif_paths = [str(Path(sim_name).joinpath(f"{sif_file}.sif").as_posix()) for sif_file in sif_names]
 
     if n_processes > 1 and elmersolver_mpi_executable is not None:
-        if is_microsoft(exec_path_override) and is_singularity(exec_path_override):
+        if sys.platform == "linux" and is_microsoft(exec_path_override) and is_singularity(exec_path_override):
             # If using wsl and singularity the mpi command needs to be given inside singularity
             run_cmds = [[elmersolver_mpi_executable, sif, "-np", str(n_processes)] for sif in sif_paths]
         else:

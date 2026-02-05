@@ -117,6 +117,7 @@ class Chip(Element):
         pdt.TypeList, "List of booleans specifying if the frame is mirrored for each chip frame", [False, True]
     )
     frames_dice_width = Param(pdt.TypeList, "Dicing street width for each chip frame", [200, 140], unit="[μm]")
+    frames_dice_grid_margin = Param(pdt.TypeList, "Dicing street margin for each chip frame", [100, 100], unit="[μm]")
 
     face_boxes = Param(
         pdt.TypeShape,
@@ -307,6 +308,7 @@ class Chip(Element):
                 marker_dist=float(self.frames_marker_dist[i]),
                 diagonal_squares=int(self.frames_diagonal_squares[i]),
                 marker_types=self.marker_types[i * 4 : (i + 1) * 4],
+                dice_grid_margin=float(self.frames_dice_grid_margin[i]),
             )
 
             if str(self.frames_mirrored[i]).lower() == "true":  # Accept both boolean and string representation
@@ -314,9 +316,6 @@ class Chip(Element):
             else:
                 frame_trans = pya.DTrans(0, 0)
             self.produce_frame(frame_parameters, frame_trans)
-
-        if self.with_gnd_tsvs:
-            self._produce_ground_tsvs(tsv_box=self.box.enlarged(-self.edge_from_tsv), faces=[0, 2])
 
     def get_box(self, face=0):
         """
@@ -405,7 +404,7 @@ class Chip(Element):
         """Return the element which will be used for the ground bumps"""
         return FlipChipConnector
 
-    def _produce_ground_bumps(self, faces=[0, 1]):  # pylint: disable=dangerous-default-value
+    def _produce_ground_bumps(self, faces=[0, 1], extra_filter_regions=[]):  # pylint: disable=dangerous-default-value
         """Produces a grid of indium bumps between given faces.
 
         The bumps avoid ground grid avoidance on both faces, and keep a minimum distance to existing bumps.
@@ -425,6 +424,7 @@ class Chip(Element):
             [("ground_grid_avoidance", face, 0) for face in faces]
             + [("indium_bump", face, self.bump_edge_to_bump_edge_separation) for face in faces]
             + [("through_silicon_via", face, self.tsv_edge_to_nearest_element) for face in faces]
+            + extra_filter_regions
         )
         bump_box = self.get_box(1).enlarged(pya.DVector(-self.edge_from_bump, -self.edge_from_bump))
         locations = self.get_ground_bump_locations(bump_box)
@@ -447,6 +447,8 @@ class Chip(Element):
 
     def post_build(self):
         self.produce_structures()
+        if self.with_gnd_tsvs:
+            self._produce_ground_tsvs(tsv_box=self.box.enlarged(-self.edge_from_tsv), faces=[0, 2])
         if self.with_gnd_bumps:
             self._produce_ground_bumps()
         if self.with_grid:
@@ -687,6 +689,7 @@ class Chip(Element):
         self,
         tsv_box=None,
         faces=[0, 2],
+        extra_filter_regions=[],
     ):  # pylint: disable=dangerous-default-value
         """Produces a grid of TSVs between given faces.
 
@@ -713,6 +716,7 @@ class Chip(Element):
             + [("indium_bump", face, self.tsv_edge_to_nearest_element) for face in faces]
             + [("base_metal_gap_wo_grid", face, self.tsv_edge_to_nearest_element) for face in faces]
             + [("through_silicon_via", face, self.tsv_edge_to_tsv_edge_separation) for face in faces]
+            + extra_filter_regions
         )
 
         if tsv_box is None:

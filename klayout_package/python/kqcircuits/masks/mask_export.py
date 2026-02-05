@@ -63,7 +63,16 @@ def export_designs(mask_set):
         export_masks_of_face(mask_set._mask_set_dir, mask_layout, mask_set)
 
 
-def export_chip(chip_cell, chip_name, chip_dir, layout, export_drc, alt_netlists=None, skip_extras=False):
+def export_chip(
+    chip_cell,
+    chip_name,
+    chip_dir,
+    layout,
+    export_drc,
+    alt_netlists=None,
+    skip_extras=False,
+    export_chip_layer_clusters=False,
+):
     """Exports a chip used in a maskset."""
 
     is_pcell = chip_cell.pcell_declaration() is not None
@@ -108,30 +117,32 @@ def export_chip(chip_cell, chip_name, chip_dir, layout, export_drc, alt_netlists
                     "density": f"{values['density'] * 100:.2f}",
                 }
 
-        # export .gds files for EBL or laser writer
-        for cluster_name, layer_cluster in chip_export_layer_clusters.items():
-            # If the chip has no shapes in the main layers of the layer cluster, should not export the chip with
-            # that layer cluster.
-            export_layer_cluster = False
-            for layer_name in layer_cluster.main_layers:
-                shapes_iter = static_cell.begin_shapes_rec(layout.layer(default_layers[layer_name]))
-                if not shapes_iter.at_end():
-                    export_layer_cluster = True
-                    break
-            if export_layer_cluster:
-                # To transform the exported layer cluster chip correctly (e.g. mirroring for top chip),
-                # an instance of the cell is inserted to a temporary cell with the correct transformation.
-                # Was not able to get this working by just using static_cell.transform_into().
-                temporary_cell = layout.create_cell(chip_name)
-                temporary_cell.insert(
-                    pya.DCellInstArray(
-                        static_cell.cell_index(), default_mask_parameters[layer_cluster.face_id]["chip_trans"]
+        if export_chip_layer_clusters:
+            print(f"{chip_name} - Exporting chip layer clusters")
+            # export .gds files for EBL or laser writer
+            for cluster_name, layer_cluster in chip_export_layer_clusters.items():
+                # If the chip has no shapes in the main layers of the layer cluster, should not export the chip with
+                # that layer cluster.
+                export_layer_cluster = False
+                for layer_name in layer_cluster.main_layers:
+                    shapes_iter = static_cell.begin_shapes_rec(layout.layer(default_layers[layer_name]))
+                    if not shapes_iter.at_end():
+                        export_layer_cluster = True
+                        break
+                if export_layer_cluster:
+                    # To transform the exported layer cluster chip correctly (e.g. mirroring for top chip),
+                    # an instance of the cell is inserted to a temporary cell with the correct transformation.
+                    # Was not able to get this working by just using static_cell.transform_into().
+                    temporary_cell = layout.create_cell(chip_name)
+                    temporary_cell.insert(
+                        pya.DCellInstArray(
+                            static_cell.cell_index(), default_mask_parameters[layer_cluster.face_id]["chip_trans"]
+                        )
                     )
-                )
-                layers_to_export = {name: layout.layer(default_layers[name]) for name in layer_cluster.all_layers()}
-                path = chip_dir / f"{chip_name}-{cluster_name}.gds"
-                _export_cell(path, temporary_cell, layers_to_export)
-                temporary_cell.delete()
+                    layers_to_export = {name: layout.layer(default_layers[name]) for name in layer_cluster.all_layers()}
+                    path = chip_dir / f"{chip_name}-{cluster_name}.gds"
+                    _export_cell(path, temporary_cell, layers_to_export)
+                    temporary_cell.delete()
 
         # export drc report for the chip
         if export_drc:
@@ -150,7 +161,7 @@ def export_chip(chip_cell, chip_name, chip_dir, layout, export_drc, alt_netlists
         json.dump(chip_json, f, cls=GeometryJsonEncoder, sort_keys=True, indent=4)
 
     # delete the static cell which was only needed for export
-    if static_cell.cell_index() != chip_cell.cell_index():
+    if static_cell.cell_index() != chip_cell.cell_index() and static_cell in layout.top_cells():
         layout.delete_cell_rec(static_cell.cell_index())
 
 
@@ -211,33 +222,46 @@ def export_mask(export_dir, layer_name, mask_layout, mask_set):
         layer_name = layer_name[1:]
         mirror = True
 
-    top_cell = mask_layout.top_cell
-    layout = top_cell.layout()
+    cell_to_export = mask_layout.top_cell
+    layout = cell_to_export.layout()
     layer_info = resolve_default_layer_info(layer_name, mask_layout.face_id)
     layer = layout.layer(layer_info)
     tmp_layer = layout.layer()
 
     if invert:
-        wafer = pya.Region(top_cell.begin_shapes_rec(layer)).merged()
+        # TODO: collecting merged region of some layer and inverting it is slow,
+        # if it's a full wafer with ground grid. Consider some approach similar to mirror
+        wafer = pya.Region(cell_to_export.begin_shapes_rec(layer)).merged()
         disc = pya.Region(circle_polygon(mask_layout.wafer_rad).to_itype(layout.dbu))
         layout.copy_layer(layer, tmp_layer)
         layout.clear_layer(layer)
-        top_cell.shapes(layer).insert(wafer ^ disc)
+        cell_to_export.shapes(layer).insert(wafer ^ disc)
 
     if mirror:
-        wafer = pya.Region(top_cell.begin_shapes_rec(layer)).merged()
-        layout.copy_layer(layer, tmp_layer)
-        layout.clear_layer(layer)
-        top_cell.shapes(layer).insert(wafer.transformed(pya.Trans(2, True, 0, 0)))
+        # Copying shapes to separate cell, then applying mirror transformation to
+        # entire cell is faster than collecting merged region.
+        # Another option is to copy cell shapes into a separate temporary layout.
+        tmp_cell = layout.create_cell(mask_layout.top_cell.name)
+        cm = pya.CellMapping()
+        cm.for_single_cell(tmp_cell, cell_to_export)
+        lm = pya.LayerMapping()
+        lm.map(layer, layer)
+
+        tmp_cell.copy_tree_shapes(cell_to_export, cm, lm)
+        tmp_cell.transform(pya.Trans(2, True, 0, 0))
+        cell_to_export = tmp_cell
 
     layers_to_export = {layer_info.name: layer}
     path = export_dir / (get_mask_layout_full_name(mask_set, mask_layout) + f"-{layer_info.name}.oas")
-    _export_cell(path, top_cell, layers_to_export)
+    _export_cell(path, cell_to_export, layers_to_export)
 
     if invert:
         layout.clear_layer(layer)
         layout.copy_layer(tmp_layer, layer)
     layout.delete_layer(tmp_layer)
+    if mirror:
+        # Delete temporary cell created for mirroring
+        layout.delete_cell(tmp_cell.cell_index())
 
 
 def export_docs(mask_set, filename="Mask_Documentation.md"):

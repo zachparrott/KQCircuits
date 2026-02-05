@@ -19,7 +19,8 @@ import pytest
 
 from kqcircuits.elements.waveguide_coplanar_splitter import WaveguideCoplanarSplitter, t_cross_parameters
 from kqcircuits.pya_resolver import pya
-from kqcircuits.elements.waveguide_composite import Node, WaveguideComposite
+from kqcircuits.elements.waveguide_composite import WaveguideComposite
+from kqcircuits.util.node import Node
 from kqcircuits.elements.airbridges.airbridge import Airbridge
 from kqcircuits.elements.airbridge_connection import AirbridgeConnection
 from kqcircuits.elements.airbridges.airbridge_rectangular import AirbridgeRectangular
@@ -230,5 +231,26 @@ def test_length_before_diagonal_non_90_deg_turns():
     total_length = wg.length()
     true_length = total_length - 2 * straight_len
     relative_length_error = abs(true_length - length) / length
+
+    assert relative_length_error < relative_length_tolerance
+
+
+def test_tight_routing():
+    layout = pya.Layout()
+    nodes = [
+        Node((300, -300), angle=-90),  # start with angle
+        Node((2000, -602), angle=180),  # 90 degree bend + straight + 180 degree bend
+        Node((0, -401), angle=0),  # straight + 180 degree bend
+        Node((0, 0), angle=0),  # two 180 degree bends without straight in between
+        Node((200, 200), angle=0),  # two 90 degree bends without straight in between
+        Node((1000, 200), angle=0),  # only straight
+        Node((5000, 100), angle=-60),  # very small bend + long straight + 30 degree bend
+        Node((200, 0)),  # 60 degree bend + long straight + end without angle
+    ]
+    wg = WaveguideComposite.create(layout, nodes=nodes, tight_routing=True)
+
+    true_length = wg.length()
+    ref_length = 15069.481
+    relative_length_error = abs(true_length - ref_length) / ref_length
 
     assert relative_length_error < relative_length_tolerance
