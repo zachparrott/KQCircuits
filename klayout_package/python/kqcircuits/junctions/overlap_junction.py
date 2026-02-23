@@ -442,11 +442,17 @@ class Overlap(Junction):
         """Add ground grid avoidance."""
         w = self.cell.dbbox().width()
         h = self.cell.dbbox().height()
+
+        if self.margin < 100:
+            gap = 100
+        else:
+            gap = self.margin
+
         protection = pya.DTrans(0, False, 0, self.base_metal_separation / 2) * pya.DBox(
-            -w / 2 - self.margin,
-            -h / 2 - self.margin,
-            w / 2 + self.margin,
-            h / 2 + self.margin,
+            -w / 2 - gap,
+            -h / 2 - gap,
+            w / 2 + gap,
+            h / 2 + gap,
         )
         self.cell.shapes(self.get_layer("ground_grid_avoidance")).insert(protection)
 

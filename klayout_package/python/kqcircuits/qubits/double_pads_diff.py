@@ -42,30 +42,78 @@ class DoublePadsDifferential(Qubit):
     Refpoint for a readout line at the opening to the coupler and a modifiable refpoint for
     a driveline.
 
-    Modified for stronger coupling to readout. 
+    Modified for stronger coupling to readout.
     """
 
-    ground_gap = Param(pdt.TypeList, "Width, height of the ground gap (µm, µm)", [756, 600])
-    ground_coupler_extend = Param(pdt.TypeDouble, "Extend coupler side ground edge.", 0, unit="μm")
+    ground_gap = Param(
+        pdt.TypeList, "Width, height of the ground gap (µm, µm)", [756, 600]
+    )
+    ground_coupler_extend = Param(
+        pdt.TypeDouble, "Extend coupler side ground edge.", 0, unit="μm"
+    )
     ground_gap_r = Param(pdt.TypeDouble, "Ground gap rounding radius", 0, unit="μm")
-    coupler_extent = Param(pdt.TypeList, "Width, height of the coupler (µm, µm)", [103.5, 155])
+    coupler_extent = Param(
+        pdt.TypeList, "Width, height of the coupler (µm, µm)", [103.5, 155]
+    )
     coupler_r = Param(pdt.TypeDouble, "Coupler rounding radius", 0, unit="μm")
-    coupler_a = Param(pdt.TypeDouble, "Width of the coupler waveguide center conductor", Element.a, unit="μm")
-    coupler_offset = Param(pdt.TypeDouble, "Distance from first qubit island to coupler", 10, unit="μm")
-    squid_offset = Param(pdt.TypeDouble, "Offset between SQUID center and qubit center", -100, unit="μm")
-    island1_extent = Param(pdt.TypeList, "Width, height of the first qubit island (µm, µm)", [247, 120])
-    island1_r = Param(pdt.TypeDouble, "First qubit island rounding radius", 0, unit="μm")
-    island2_extent = Param(pdt.TypeList, "Width, height of the second qubit island (µm, µm)", [506, 120])
-    island2_r = Param(pdt.TypeDouble, "Second qubit island rounding radius", 0, unit="μm")
-    drive_position = Param(pdt.TypeList, "Coordinate for the drive port (µm, µm)", [-450, 0])
-    island1_taper_width = Param(pdt.TypeDouble, "First qubit island tapering width on the island side", 10, unit="µm")
-    island1_taper_junction_width = Param(pdt.TypeDouble,
-                                         "First qubit island tapering width on the junction side", 10, unit="µm")
-    island2_taper_width = Param(pdt.TypeDouble, "Second qubit island tapering width on the island side", 10, unit="µm")
-    island2_taper_junction_width = Param(pdt.TypeDouble,
-                                         "Second qubit island tapering width on the junction side", 10, unit="µm")
+    coupler_a = Param(
+        pdt.TypeDouble,
+        "Width of the coupler waveguide center conductor",
+        Element.a,
+        unit="μm",
+    )
+    coupler_offset = Param(
+        pdt.TypeDouble, "Distance from first qubit island to coupler", 10, unit="μm"
+    )
+    squid_offset = Param(
+        pdt.TypeDouble, "Offset between SQUID center and qubit center", -100, unit="μm"
+    )
+    island1_extent = Param(
+        pdt.TypeList, "Width, height of the first qubit island (µm, µm)", [247, 120]
+    )
+    island1_r = Param(
+        pdt.TypeDouble, "First qubit island rounding radius", 0, unit="μm"
+    )
+    island2_extent = Param(
+        pdt.TypeList, "Width, height of the second qubit island (µm, µm)", [506, 120]
+    )
+    island2_r = Param(
+        pdt.TypeDouble, "Second qubit island rounding radius", 0, unit="μm"
+    )
+    drive_position = Param(
+        pdt.TypeList, "Coordinate for the drive port (µm, µm)", [-450, 0]
+    )
+    island1_taper_width = Param(
+        pdt.TypeDouble,
+        "First qubit island tapering width on the island side",
+        10,
+        unit="µm",
+    )
+    island1_taper_junction_width = Param(
+        pdt.TypeDouble,
+        "First qubit island tapering width on the junction side",
+        10,
+        unit="µm",
+    )
+    island2_taper_width = Param(
+        pdt.TypeDouble,
+        "Second qubit island tapering width on the island side",
+        10,
+        unit="µm",
+    )
+    island2_taper_junction_width = Param(
+        pdt.TypeDouble,
+        "Second qubit island tapering width on the junction side",
+        10,
+        unit="µm",
+    )
 
-    island_island_gap = Param(pdt.TypeDouble, "Island to island gap distance", 20, unit="µm")
+    island_island_gap = Param(
+        pdt.TypeDouble, "Island to island gap distance", 20, unit="µm"
+    )
+
+    grid_pads = Param(pdt.TypeBoolean, "Boolean whether to include grid pads", False)
+
     with_squid = Param(pdt.TypeBoolean, "Boolean whether to include the squid", True)
 
     def build(self):
@@ -75,90 +123,201 @@ class DoublePadsDifferential(Qubit):
         temp_squid_cell = self.add_element(Squid, junction_type=self.junction_type)
         temp_squid_ref = self.get_refpoints(temp_squid_cell)
         squid_height = temp_squid_ref["port_common"].distance(pya.DPoint(0, 0))
-        
+
         # Calculate SQUID center position (this is where the ground gap will be centered)
         squid_center_y = self.squid_offset
-        
+
         # Qubit base - ground gap centered on SQUID position
         ground_gap_points = [
-            pya.DPoint(float(self.ground_gap[0]) / 2,  squid_center_y + float(self.ground_gap[1]) / 2 + self.ground_coupler_extend),
-            pya.DPoint(float(self.ground_gap[0]) / 2, squid_center_y - float(self.ground_gap[1]) / 2),
-            pya.DPoint(-float(self.ground_gap[0]) / 2, squid_center_y - float(self.ground_gap[1]) / 2),
-            pya.DPoint(-float(self.ground_gap[0]) / 2, squid_center_y + float(self.ground_gap[1]) / 2 + self.ground_coupler_extend),
+            pya.DPoint(
+                float(self.ground_gap[0]) / 2,
+                squid_center_y
+                + float(self.ground_gap[1]) / 2
+                + self.ground_coupler_extend,
+            ),
+            pya.DPoint(
+                float(self.ground_gap[0]) / 2,
+                squid_center_y - float(self.ground_gap[1]) / 2,
+            ),
+            pya.DPoint(
+                -float(self.ground_gap[0]) / 2,
+                squid_center_y - float(self.ground_gap[1]) / 2,
+            ),
+            pya.DPoint(
+                -float(self.ground_gap[0]) / 2,
+                squid_center_y
+                + float(self.ground_gap[1]) / 2
+                + self.ground_coupler_extend,
+            ),
         ]
         ground_gap_polygon = pya.DPolygon(ground_gap_points)
         ground_gap_region = pya.Region(ground_gap_polygon.to_itype(self.layout.dbu))
-        ground_gap_region.round_corners(self.ground_gap_r / self.layout.dbu,
-                                        self.ground_gap_r / self.layout.dbu, self.n)
+        ground_gap_region.round_corners(
+            self.ground_gap_r / self.layout.dbu,
+            self.ground_gap_r / self.layout.dbu,
+            self.n,
+        )
 
         # Now actually add SQUID
-        squid_transf = pya.DCplxTrans(1, 0, False, pya.DVector(0, self.squid_offset - squid_height / 2))
+        squid_transf = pya.DCplxTrans(
+            1, 0, False, pya.DVector(0, self.squid_offset - squid_height / 2)
+        )
 
         if self.with_squid:
             self.produce_squid(squid_transf)
 
-        taper_height = (self.island_island_gap - squid_height)/2
+        taper_height = (self.island_island_gap - squid_height) / 2
 
         # First island
         island1_region = self._build_island1(squid_height, taper_height)
+        island1_region_prot = self._build_island1_protection(squid_height, taper_height)
 
         # Second island
         island2_region = self._build_island2(squid_height, taper_height)
+        island2_region_prot = self._build_island2_protection(squid_height, taper_height)
 
         # Coupler gap
-        coupler_region = self._build_coupler((self.squid_offset + squid_height / 2)
-                                             + taper_height + float(self.island1_extent[1]))
+        coupler_region = self._build_coupler(
+            (self.squid_offset + squid_height / 2)
+            + taper_height
+            + float(self.island1_extent[1])
+        )
+        coupler_prot_region = self._build_coupler_protection(
+            (self.squid_offset + squid_height / 2)
+            + taper_height
+            + float(self.island1_extent[1])
+        )
 
         self.cell.shapes(self.get_layer("base_metal_gap_wo_grid")).insert(
             ground_gap_region - coupler_region - island1_region - island2_region
         )
 
         # Protection
-        protection_polygon = pya.DPolygon([
-            p + pya.DVector(
-                    math.copysign(self.margin, p.x),
-                    math.copysign(self.margin, p.y)
-            ) for p in ground_gap_points
-        ])
+        protection_polygon = pya.DPolygon(
+            [
+                p
+                + pya.DVector(
+                    math.copysign(self.margin, p.x), math.copysign(self.margin, p.y)
+                )
+                for p in ground_gap_points
+            ]
+        )
+
         protection_region = pya.Region(protection_polygon.to_itype(self.layout.dbu))
         protection_region.round_corners(
             (self.ground_gap_r + self.margin) / self.layout.dbu,
             (self.ground_gap_r + self.margin) / self.layout.dbu,
-            self.n
+            self.n,
         )
-        self.cell.shapes(self.get_layer("ground_grid_avoidance")).insert(protection_region)
+        if self.grid_pads:
+            self.cell.shapes(self.get_layer("ground_grid_avoidance")).insert(
+                protection_region
+                - island1_region_prot
+                - island2_region_prot
+                - coupler_prot_region
+            )
+        else:
+            self.cell.shapes(self.get_layer("ground_grid_avoidance")).insert(
+                protection_region
+            )
 
         # Coupler port - now needs to account for offset ground gap
-        coupler_port_y = squid_center_y + float(self.ground_gap[1]) / 2 + self.ground_coupler_extend
-        self.add_port("cplr", pya.DPoint(0, coupler_port_y),
-                      direction=pya.DVector(pya.DPoint(0, coupler_port_y)))
+        coupler_port_y = (
+            squid_center_y + float(self.ground_gap[1]) / 2 + self.ground_coupler_extend
+        )
+        self.add_port(
+            "cplr",
+            pya.DPoint(0, coupler_port_y),
+            direction=pya.DVector(pya.DPoint(0, coupler_port_y)),
+        )
 
         # Drive port
-        self.add_port("drive", pya.DPoint(float(self.drive_position[0]), float(self.drive_position[1])),
-                      direction=pya.DVector(float(self.drive_position[0]), float(self.drive_position[1])))
+        self.add_port(
+            "drive",
+            pya.DPoint(float(self.drive_position[0]), float(self.drive_position[1])),
+            direction=pya.DVector(
+                float(self.drive_position[0]), float(self.drive_position[1])
+            ),
+        )
 
     def _build_coupler(self, first_island_top_edge):
-        coupler_top_edge = first_island_top_edge + self.coupler_offset + float(self.coupler_extent[1])
-        coupler_polygon = pya.DPolygon([
-            pya.DPoint(-float(self.coupler_extent[0]) / 2, coupler_top_edge),
-            pya.DPoint(-float(self.coupler_extent[0]) / 2, first_island_top_edge + self.coupler_offset),
-            pya.DPoint(float(self.coupler_extent[0]) / 2, first_island_top_edge + self.coupler_offset),
-            pya.DPoint(float(self.coupler_extent[0]) / 2, coupler_top_edge),
-        ])
+        coupler_top_edge = (
+            first_island_top_edge + self.coupler_offset + float(self.coupler_extent[1])
+        )
+        coupler_polygon = pya.DPolygon(
+            [
+                pya.DPoint(-float(self.coupler_extent[0]) / 2, coupler_top_edge),
+                pya.DPoint(
+                    -float(self.coupler_extent[0]) / 2,
+                    first_island_top_edge + self.coupler_offset,
+                ),
+                pya.DPoint(
+                    float(self.coupler_extent[0]) / 2,
+                    first_island_top_edge + self.coupler_offset,
+                ),
+                pya.DPoint(float(self.coupler_extent[0]) / 2, coupler_top_edge),
+            ]
+        )
         coupler_region = pya.Region(coupler_polygon.to_itype(self.layout.dbu))
-        coupler_region.round_corners(self.coupler_r / self.layout.dbu, self.coupler_r / self.layout.dbu, self.n)
-        coupler_path_polygon = pya.DPolygon([
-            pya.DPoint(-self.coupler_a / 2, self.squid_offset + float(self.ground_gap[1]) / 2 + self.ground_coupler_extend),
-            pya.DPoint(self.coupler_a / 2, self.squid_offset + float(self.ground_gap[1]) / 2 + self.ground_coupler_extend),
-            pya.DPoint(self.coupler_a / 2, coupler_top_edge),
-            pya.DPoint(-self.coupler_a / 2, coupler_top_edge),
-        ])
+        coupler_region.round_corners(
+            self.coupler_r / self.layout.dbu, self.coupler_r / self.layout.dbu, self.n
+        )
+        coupler_path_polygon = pya.DPolygon(
+            [
+                pya.DPoint(
+                    -self.coupler_a / 2,
+                    self.squid_offset
+                    + float(self.ground_gap[1]) / 2
+                    + self.ground_coupler_extend,
+                ),
+                pya.DPoint(
+                    self.coupler_a / 2,
+                    self.squid_offset
+                    + float(self.ground_gap[1]) / 2
+                    + self.ground_coupler_extend,
+                ),
+                pya.DPoint(self.coupler_a / 2, coupler_top_edge),
+                pya.DPoint(-self.coupler_a / 2, coupler_top_edge),
+            ]
+        )
         coupler_path = pya.Region(coupler_path_polygon.to_itype(self.layout.dbu))
         return coupler_region + coupler_path
 
+    def _build_coupler_protection(self, first_island_top_edge):
+        coupler_top_edge = (
+            first_island_top_edge + self.coupler_offset + float(self.coupler_extent[1])
+        )
+        protection_polygon = pya.DPolygon(
+            [
+                pya.DPoint(
+                    -float(self.coupler_extent[0]) / 2 + self.margin,
+                    coupler_top_edge - self.margin,
+                ),
+                pya.DPoint(
+                    -float(self.coupler_extent[0]) / 2 + self.margin,
+                    first_island_top_edge + self.coupler_offset + self.margin,
+                ),
+                pya.DPoint(
+                    float(self.coupler_extent[0]) / 2 - self.margin,
+                    first_island_top_edge + self.coupler_offset + self.margin,
+                ),
+                pya.DPoint(
+                    float(self.coupler_extent[0]) / 2 - self.margin,
+                    coupler_top_edge - self.margin,
+                ),
+            ]
+        )
+        protection_region = pya.Region(protection_polygon.to_itype(self.layout.dbu))
+        protection_region.round_corners(
+            (self.coupler_r + self.margin) / self.layout.dbu,
+            (self.coupler_r + self.margin) / self.layout.dbu,
+            self.n,
+        )
+        return protection_region
+
     def _build_island1(self, squid_height, taper_height):
         """Build first qubit island with integrated junction taper in a single merged polygon.
-        
+
         Key polygon points (ordered counterclockwise):
         - Points 0-7: Island perimeter with coupler cutout
         - Points 8-11: Junction taper transition (expanding downward)
@@ -166,29 +325,62 @@ class DoublePadsDifferential(Qubit):
         - coupler_offset: Horizontal gap between island edge and coupler edge
         """
         island1_bottom = self.squid_offset + squid_height / 2
-        island1_polygon = pya.DPolygon([
+
+        island1_points = [
             # Left side at taper-body junction
-            pya.DPoint(-float(self.island1_extent[0]) / 2, island1_bottom + taper_height),
+            pya.DPoint(
+                -float(self.island1_extent[0]) / 2, island1_bottom + taper_height
+            ),
             # Left side up to coupler bottom
-            pya.DPoint(-float(self.island1_extent[0]) / 2, 
-                       island1_bottom + taper_height + float(self.island1_extent[1]) + self.coupler_offset + float(self.coupler_extent[1])),
+            pya.DPoint(
+                -float(self.island1_extent[0]) / 2,
+                island1_bottom
+                + taper_height
+                + float(self.island1_extent[1])
+                + self.coupler_offset
+                + float(self.coupler_extent[1]),
+            ),
             # Left inset to coupler edge (left cutout upper corner)
-            pya.DPoint(-1*(float(self.coupler_extent[0])/2 + self.coupler_offset), 
-                       island1_bottom + taper_height + float(self.island1_extent[1]) + self.coupler_offset + float(self.coupler_extent[1])),
+            pya.DPoint(
+                -1 * (float(self.coupler_extent[0]) / 2 + self.coupler_offset),
+                island1_bottom
+                + taper_height
+                + float(self.island1_extent[1])
+                + self.coupler_offset
+                + float(self.coupler_extent[1]),
+            ),
             # Left inset down to island top (left cutout lower corner)
-            pya.DPoint(-1*(float(self.coupler_extent[0])/2 + self.coupler_offset), 
-                       island1_bottom + taper_height + float(self.island1_extent[1])),
+            pya.DPoint(
+                -1 * (float(self.coupler_extent[0]) / 2 + self.coupler_offset),
+                island1_bottom + taper_height + float(self.island1_extent[1]),
+            ),
             # Right inset down to island top (right cutout lower corner)
-            pya.DPoint((float(self.coupler_extent[0])/2 + self.coupler_offset), 
-                       island1_bottom + taper_height + float(self.island1_extent[1])),
+            pya.DPoint(
+                (float(self.coupler_extent[0]) / 2 + self.coupler_offset),
+                island1_bottom + taper_height + float(self.island1_extent[1]),
+            ),
             # Right inset up to coupler bottom (right cutout upper corner)
-            pya.DPoint((float(self.coupler_extent[0])/2 + self.coupler_offset), 
-                       island1_bottom + taper_height + float(self.island1_extent[1]) + self.coupler_offset + float(self.coupler_extent[1])),
+            pya.DPoint(
+                (float(self.coupler_extent[0]) / 2 + self.coupler_offset),
+                island1_bottom
+                + taper_height
+                + float(self.island1_extent[1])
+                + self.coupler_offset
+                + float(self.coupler_extent[1]),
+            ),
             # Right side up to coupler bottom
-            pya.DPoint(float(self.island1_extent[0]) / 2, 
-                       island1_bottom + taper_height + float(self.island1_extent[1]) + self.coupler_offset + float(self.coupler_extent[1])),
+            pya.DPoint(
+                float(self.island1_extent[0]) / 2,
+                island1_bottom
+                + taper_height
+                + float(self.island1_extent[1])
+                + self.coupler_offset
+                + float(self.coupler_extent[1]),
+            ),
             # Right side down to taper-body junction
-            pya.DPoint(float(self.island1_extent[0]) / 2, island1_bottom + taper_height),
+            pya.DPoint(
+                float(self.island1_extent[0]) / 2, island1_bottom + taper_height
+            ),
             # Taper right outer edge
             pya.DPoint(self.island1_taper_width / 2, island1_bottom + taper_height),
             # Taper right junction connection (narrower)
@@ -197,33 +389,175 @@ class DoublePadsDifferential(Qubit):
             pya.DPoint(-self.island1_taper_junction_width / 2, island1_bottom),
             # Taper left outer edge
             pya.DPoint(-self.island1_taper_width / 2, island1_bottom + taper_height),
-        ])
+        ]
+
+        island1_polygon = pya.DPolygon(island1_points)
         island1_region = pya.Region(island1_polygon.to_itype(self.layout.dbu))
-        island1_region.round_corners(self.island1_r / self.layout.dbu, self.island1_r / self.layout.dbu, self.n)
-        
+        island1_region.round_corners(
+            self.island1_r / self.layout.dbu, self.island1_r / self.layout.dbu, self.n
+        )
+
         return island1_region
 
     def _build_island2(self, squid_height, taper_height):
         island2_top = self.squid_offset - squid_height / 2
-        island2_polygon = pya.DPolygon([
-            pya.DPoint(-float(self.island2_extent[0]) / 2,
-                       island2_top - taper_height - float(self.island2_extent[1])),
-            pya.DPoint(float(self.island2_extent[0]) / 2,
-                       island2_top - taper_height - float(self.island2_extent[1])),
+        island2_points = [
+            pya.DPoint(
+                -float(self.island2_extent[0]) / 2,
+                island2_top - taper_height - float(self.island2_extent[1]),
+            ),
+            pya.DPoint(
+                float(self.island2_extent[0]) / 2,
+                island2_top - taper_height - float(self.island2_extent[1]),
+            ),
             pya.DPoint(float(self.island2_extent[0]) / 2, island2_top - taper_height),
             pya.DPoint(self.island2_taper_width / 2, island2_top - taper_height),
             pya.DPoint(self.island2_taper_junction_width / 2, island2_top),
             pya.DPoint(-self.island2_taper_junction_width / 2, island2_top),
             pya.DPoint(-self.island2_taper_width / 2, island2_top - taper_height),
             pya.DPoint(-float(self.island2_extent[0]) / 2, island2_top - taper_height),
-        ])
+        ]
+
+        island2_polygon = pya.DPolygon(island2_points)
         island2_region = pya.Region(island2_polygon.to_itype(self.layout.dbu))
-        island2_region.round_corners(self.island2_r / self.layout.dbu, self.island2_r / self.layout.dbu, self.n)
-        
+        island2_region.round_corners(
+            self.island2_r / self.layout.dbu, self.island2_r / self.layout.dbu, self.n
+        )
+
+        return island2_region
+
+    def _build_island1_protection(self, squid_height, taper_height):
+        """Build first qubit island with integrated junction taper in a single merged polygon.
+
+        Key polygon points (ordered counterclockwise):
+        - Points 0-7: Island perimeter with coupler cutout
+        - Points 8-11: Junction taper transition (expanding downward)
+        - taper_height: Vertical distance from island1_bottom to island body
+        - coupler_offset: Horizontal gap between island edge and coupler edge
+        """
+        island1_bottom = self.squid_offset + squid_height / 2
+
+        island1_points = [
+            # Left side at taper-body junction
+            pya.DPoint(
+                -float(self.island1_extent[0]) / 2 + self.margin,
+                island1_bottom + taper_height + self.margin,
+            ),
+            # Left side up to coupler bottom
+            pya.DPoint(
+                -float(self.island1_extent[0]) / 2 + self.margin,
+                island1_bottom
+                + taper_height
+                + float(self.island1_extent[1])
+                + self.coupler_offset
+                + float(self.coupler_extent[1])
+                - self.margin,
+            ),
+            # Left inset to coupler edge (left cutout upper corner)
+            pya.DPoint(
+                -1 * (float(self.coupler_extent[0]) / 2 + self.coupler_offset)
+                - self.margin,
+                island1_bottom
+                + taper_height
+                + float(self.island1_extent[1])
+                + self.coupler_offset
+                + float(self.coupler_extent[1])
+                - self.margin,
+            ),
+            # Left inset down to island top (left cutout lower corner)
+            pya.DPoint(
+                -1 * (float(self.coupler_extent[0]) / 2 + self.coupler_offset)
+                - self.margin,
+                island1_bottom
+                + taper_height
+                + float(self.island1_extent[1])
+                - self.margin,
+            ),
+            # Right inset down to island top (right cutout lower corner)
+            pya.DPoint(
+                (float(self.coupler_extent[0]) / 2 + self.coupler_offset) + self.margin,
+                island1_bottom
+                + taper_height
+                + float(self.island1_extent[1])
+                - self.margin,
+            ),
+            # Right inset up to coupler bottom (right cutout upper corner)
+            pya.DPoint(
+                (float(self.coupler_extent[0]) / 2 + self.coupler_offset) + self.margin,
+                island1_bottom
+                + taper_height
+                + float(self.island1_extent[1])
+                + self.coupler_offset
+                + float(self.coupler_extent[1])
+                - self.margin,
+            ),
+            # Right side up to coupler bottom
+            pya.DPoint(
+                float(self.island1_extent[0]) / 2 - self.margin,
+                island1_bottom
+                + taper_height
+                + float(self.island1_extent[1])
+                + self.coupler_offset
+                + float(self.coupler_extent[1])
+                - self.margin,
+            ),
+            # Right side down to taper-body junction
+            pya.DPoint(
+                float(self.island1_extent[0]) / 2 - self.margin,
+                island1_bottom + taper_height + self.margin,
+            ),
+        ]
+
+        island1_polygon = pya.DPolygon(island1_points)
+        island1_region = pya.Region(island1_polygon.to_itype(self.layout.dbu))
+        island1_region.round_corners(
+            (self.island1_r + self.margin) / self.layout.dbu,
+            (self.island1_r + self.margin) / self.layout.dbu,
+            self.n,
+        )
+
+        return island1_region
+
+    def _build_island2_protection(self, squid_height, taper_height):
+        island2_top = self.squid_offset - squid_height / 2
+        island2_points = [
+            pya.DPoint(
+                -float(self.island2_extent[0]) / 2 + self.margin,
+                island2_top
+                - taper_height
+                - float(self.island2_extent[1])
+                + self.margin,
+            ),
+            pya.DPoint(
+                float(self.island2_extent[0]) / 2 - self.margin,
+                island2_top
+                - taper_height
+                - float(self.island2_extent[1])
+                + self.margin,
+            ),
+            pya.DPoint(
+                float(self.island2_extent[0]) / 2 - self.margin,
+                island2_top - taper_height - self.margin,
+            ),
+            pya.DPoint(
+                -float(self.island2_extent[0]) / 2 + self.margin,
+                island2_top - taper_height - self.margin,
+            ),
+        ]
+
+        island2_polygon = pya.DPolygon(island2_points)
+        island2_region = pya.Region(island2_polygon.to_itype(self.layout.dbu))
+        island2_region.round_corners(
+            (self.island2_r + self.margin) / self.layout.dbu,
+            (self.island2_r + self.margin) / self.layout.dbu,
+            self.n,
+        )
+
         return island2_region
 
     @classmethod
     def get_sim_ports(cls, simulation):
-        return[
-            JunctionSimPort(floating=True), WaveguideToSimPort("port_cplr", side="top")
+        return [
+            JunctionSimPort(floating=True),
+            WaveguideToSimPort("port_cplr", side="top"),
         ]

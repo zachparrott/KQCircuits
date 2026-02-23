@@ -19,6 +19,7 @@
 # For more information, see: https://meetiqm.com/iqm-individual-contributor-license-agreement
 
 from math import pi
+
 from kqcircuits.pya_resolver import pya
 from kqcircuits.elements.element import Element
 from kqcircuits.chips.chip import Chip
@@ -30,7 +31,7 @@ from kqcircuits.elements.launcher import Launcher
 from kqcircuits.elements.waveguide_coplanar import WaveguideCoplanar
 from kqcircuits.elements.waveguide_composite import WaveguideComposite, Node
 from kqcircuits.elements.hanger_resonator import HangerResonator
-
+from kqcircuits.elements.waveguide_coplanar_splitter import WaveguideCoplanarSplitter
 from kqcircuits.util.label import produce_label, LabelOrigin
 
 from kqcircuits.qubits.double_pads_diff import DoublePadsDifferential
@@ -668,12 +669,140 @@ class PurcellQubits2(Chip):
         )
 
         self.insert_cell(
+            WaveguideCoplanarSplitter,
+            pya.DTrans(0, True, self.refpoints["W_port"].x + 200, 3750),
+            angles=[0, 90, 180, 270],
+            lengths=[11, 11, 11, 11],
+            inst_name="splitter",
+        )
+
+        self.insert_cell(
+            WaveguideCoplanarSplitter,
+            pya.DTrans(
+                0,
+                True,
+                self._compute_hanger_location((0.35 + 0.55) / 2),
+                3750 + 2200 + 350,
+            ),
+            angles=[0, 180, 270],
+            lengths=[11, 11, 11],
+            port_names=["r", "l", "c"],
+            inst_name="driveSplitU",
+        )
+
+        self.insert_cell(
+            WaveguideCoplanarSplitter,
+            pya.DTrans(
+                0,
+                True,
+                self._compute_hanger_location((0.45 + 0.65) / 2),
+                3750 - 2200 - 350,
+            ),
+            angles=[0, 90, 180],
+            lengths=[11, 11, 11],
+            port_names=["r", "c", "l"],
+            inst_name="driveSplitD",
+        )
+
+        self.insert_cell(
             WaveguideComposite,
             nodes=[
                 Node(self.refpoints["W_port"]),
+                Node(self.refpoints["splitter_port_c"], n_bridges=1),
+            ],
+            margin=self.grid_margin,
+        )
+
+        self.insert_cell(
+            WaveguideComposite,
+            nodes=[
+                Node(self.refpoints["splitter_port_a"]),
                 Node(self.refpoints["Cin_port_a"], n_bridges=1),
             ],
             margin=self.grid_margin,
+        )
+
+        self.insert_cell(
+            WaveguideComposite,
+            nodes=[
+                Node(self.refpoints["splitter_port_d"]),
+                Node(
+                    self.refpoints["splitter_port_d"] + pya.DPoint(0, 2900),
+                    length_before=2900 + 865.5,
+                ),
+                Node(
+                    (
+                        self.refpoints["driveSplitU_port_c"].x,
+                        (self.refpoints["splitter_port_d"] + pya.DPoint(2250, 2900)).y,
+                    ),
+                ),
+                Node(self.refpoints["driveSplitU_port_c"]),
+            ],
+            margin=self.grid_margin,
+        )
+        self.insert_cell(
+            WaveguideCoplanar,
+            path=pya.DPath(
+                [
+                    self.refpoints["driveSplitU_port_r"],
+                    self.refpoints["driveSplitU_port_r"] + pya.DPoint(200, 0),
+                ],
+                0,
+            ),
+            term2=10,
+        )
+        self.insert_cell(
+            WaveguideCoplanar,
+            path=pya.DPath(
+                [
+                    self.refpoints["driveSplitU_port_l"],
+                    self.refpoints["driveSplitU_port_l"] + pya.DPoint(-200, 0),
+                ],
+                0,
+            ),
+            term2=10,
+        )
+
+        # Down drive
+        self.insert_cell(
+            WaveguideComposite,
+            nodes=[
+                Node(self.refpoints["splitter_port_b"]),
+                Node(
+                    self.refpoints["splitter_port_b"] + pya.DPoint(0, -2900),
+                    # length_before=6300,
+                ),
+                Node(
+                    (
+                        self.refpoints["driveSplitD_port_c"].x,
+                        (self.refpoints["splitter_port_b"] + pya.DPoint(2250, -2900)).y,
+                    ),
+                ),
+                Node(self.refpoints["driveSplitD_port_c"]),
+            ],
+            margin=self.grid_margin,
+        )
+        self.insert_cell(
+            WaveguideCoplanar,
+            path=pya.DPath(
+                [
+                    self.refpoints["driveSplitD_port_r"],
+                    self.refpoints["driveSplitD_port_r"] + pya.DPoint(200, 0),
+                ],
+                0,
+            ),
+            term2=10,
+        )
+        self.insert_cell(
+            WaveguideCoplanar,
+            path=pya.DPath(
+                [
+                    self.refpoints["driveSplitD_port_l"],
+                    self.refpoints["driveSplitD_port_l"] + pya.DPoint(-200, 0),
+                ],
+                0,
+            ),
+            term2=10,
         )
 
         self.insert_cell(
