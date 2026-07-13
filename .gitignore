@@ -158,3 +158,6 @@ singularity/python
 singularity/bin
 
 .DS_Store
+
+# LLM instructions
+copilot-instructions.md
