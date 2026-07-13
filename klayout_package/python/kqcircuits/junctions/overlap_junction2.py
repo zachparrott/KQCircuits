@@ -40,7 +40,7 @@ class Overlap2(Junction):
         pdt.TypeDouble, "Width of the hook perpendicular to finger.", 1.0, unit="μm"
     )
     bridge_gap = Param(pdt.TypeDouble, "Gap between finger and hook.", 0.15, unit="μm")
-    pad_to_pad_separation = Param(pdt.TypeDouble, "Pad separation.", 12.0, unit="μm")
+    base_metal_separation = Param(pdt.TypeDouble, "Pad separation.", 12.0, unit="μm")
     pad_height = Param(pdt.TypeDouble, "Height of the junction pad.", 4.0, unit="μm")
     pad_width = Param(pdt.TypeDouble, "Width of the junction pad.", 8.0, unit="μm")
     taper_width = Param(
@@ -70,9 +70,9 @@ class Overlap2(Junction):
     x_offset = Param(pdt.TypeDouble, "Horizontal junction offset.", 0, unit="μm")
 
     def build(self, **kwargs):
-        # self.metal_height = self.pad_to_pad_separation + 2 * (self.pad_height + self.shadow_margin*4)
+        # self.metal_height = self.base_metal_separation + 2 * (self.pad_height + self.shadow_margin*4)
         self.metal_height = max(
-            self.pad_to_pad_separation + 2 * (self.pad_height + self.shadow_margin * 4),
+            self.base_metal_separation + 2 * (self.pad_height + self.shadow_margin * 4),
             self.junction_height,
         )
         self.width = 10
@@ -94,7 +94,7 @@ class Overlap2(Junction):
         patch_shapes = []
 
         # create rounded bottom part
-        y0 = (self.pad_to_pad_separation / 2) + self.pad_offset
+        y0 = (self.base_metal_separation / 2) + self.pad_offset
         bp_pts_left = [
             pya.DPoint(-self.pad_width / 2, y0),
             pya.DPoint(-self.pad_width / 2, y0 + self.pad_height),
@@ -103,7 +103,7 @@ class Overlap2(Junction):
             0,
             False,
             0,
-            -self.pad_to_pad_separation - self.pad_height - 2 * self.pad_offset,
+            -self.base_metal_separation - self.pad_height - 2 * self.pad_offset,
         ) * polygon_with_vsym(bp_pts_left)
         self._round_corners_and_append(
             bp_shape, junction_shapes_bottom, rounding_params
@@ -117,7 +117,7 @@ class Overlap2(Junction):
             0,
             False,
             0,
-            -self.pad_to_pad_separation - self.pad_height - 2 * self.pad_offset,
+            -self.base_metal_separation - self.pad_height - 2 * self.pad_offset,
         ) * polygon_with_vsym(bp_shadow_pts_left)
         self._round_corners_and_append(bp_shadow_shape, shadow_shapes, rounding_params)
 
@@ -130,13 +130,13 @@ class Overlap2(Junction):
             0,
             False,
             0,
-            -self.pad_to_pad_separation - self.pad_height - 2 * self.pad_offset,
+            -self.base_metal_separation - self.pad_height - 2 * self.pad_offset,
         ) * polygon_with_vsym(bp_patch_pts_left)
         self._round_corners_and_append(bp_patch_shape, patch_shapes, rounding_params)
 
         # create rounded top part
         tp_shape = pya.DTrans(
-            0, False, 0, self.pad_height / 2 + self.pad_to_pad_separation / 2
+            0, False, 0, self.pad_height / 2 + self.base_metal_separation / 2
         ) * polygon_with_vsym(bp_pts_left)
 
         tp_shape = pya.DTrans(0, False, 0, 0) * polygon_with_vsym(bp_pts_left)
@@ -163,6 +163,15 @@ class Overlap2(Junction):
         self._add_shapes(patch_shapes, "SIS_junction_2")
         self._produce_ground_metal_shapes()
         self._produce_ground_grid_avoidance()
+
+        # Shift all layout shapes to match Overlap alignment (bottom base metal edge flat at y=0)
+        shift_trans = pya.Trans(
+            0, False, 0, int(round((self.base_metal_separation / 2) / self.layout.dbu))
+        )
+        for layer in self.cell.layout().layer_indexes():
+            for shape in self.cell.shapes(layer):
+                shape.transform(shift_trans)
+
         self._add_refpoints()
 
     def _make_qubit_junction(self):  # , top_corner, b_corner_y, finger_margin=0):
@@ -185,42 +194,42 @@ class Overlap2(Junction):
             ),
         ]
         hook_under_pts1 = [
-            pya.DPoint(self.taper_width / 2, (self.pad_to_pad_separation / 2)),
-            pya.DPoint(self.hook_width / 2, (self.pad_to_pad_separation / 2 - 1)),
-            pya.DPoint(self.hook_width / 2, (self.pad_to_pad_separation / 2 - 1) - 0.3),
+            pya.DPoint(self.taper_width / 2, (self.base_metal_separation / 2)),
+            pya.DPoint(self.hook_width / 2, (self.base_metal_separation / 2 - 1)),
+            pya.DPoint(self.hook_width / 2, (self.base_metal_separation / 2 - 1) - 0.3),
             pya.DPoint(
-                self.hook_width / 2 + 0.3, (self.pad_to_pad_separation / 2 - 1) - 0.3
+                self.hook_width / 2 + 0.3, (self.base_metal_separation / 2 - 1) - 0.3
             ),
-            pya.DPoint(self.hook_width / 2 + 0.3, (self.pad_to_pad_separation / 2 - 1)),
-            pya.DPoint(self.taper_width / 2 + 0.3, (self.pad_to_pad_separation / 2)),
+            pya.DPoint(self.hook_width / 2 + 0.3, (self.base_metal_separation / 2 - 1)),
+            pya.DPoint(self.taper_width / 2 + 0.3, (self.base_metal_separation / 2)),
         ]
         hook_under_pts2 = [
-            pya.DPoint(-self.taper_width / 2, (self.pad_to_pad_separation / 2)),
-            pya.DPoint(-self.hook_thickness / 2, (self.pad_to_pad_separation / 2 - 1)),
+            pya.DPoint(-self.taper_width / 2, (self.base_metal_separation / 2)),
+            pya.DPoint(-self.hook_thickness / 2, (self.base_metal_separation / 2 - 1)),
             pya.DPoint(
-                -self.hook_thickness / 2 - 0.3, (self.pad_to_pad_separation / 2 - 1)
+                -self.hook_thickness / 2 - 0.3, (self.base_metal_separation / 2 - 1)
             ),
-            pya.DPoint(self.hook_width / 2 - 0.2, (self.pad_to_pad_separation / 2 - 1)),
+            pya.DPoint(self.hook_width / 2 - 0.2, (self.base_metal_separation / 2 - 1)),
             pya.DPoint(
-                self.hook_width / 2 - 0.2, (self.pad_to_pad_separation / 2 - 1.3)
+                self.hook_width / 2 - 0.2, (self.base_metal_separation / 2 - 1.3)
             ),
             pya.DPoint(
-                -self.hook_thickness / 2, (self.pad_to_pad_separation / 2 - 1.3)
+                -self.hook_thickness / 2, (self.base_metal_separation / 2 - 1.3)
             ),
-            pya.DPoint(-self.taper_width / 2 - 0.3, (self.pad_to_pad_separation / 2)),
+            pya.DPoint(-self.taper_width / 2 - 0.3, (self.base_metal_separation / 2)),
         ]
 
         finger_under_pts1 = [
-            pya.DPoint(-self.taper_width / 2, -(self.pad_to_pad_separation / 2)),
-            pya.DPoint(-0.1, -(self.pad_to_pad_separation / 2 - 1)),
-            pya.DPoint(-0.1, -(self.pad_to_pad_separation / 2 - 1) + 0.3),
-            pya.DPoint(-self.taper_width / 2, -(self.pad_to_pad_separation / 2) + 0.3),
+            pya.DPoint(-self.taper_width / 2, -(self.base_metal_separation / 2)),
+            pya.DPoint(-0.1, -(self.base_metal_separation / 2 - 1)),
+            pya.DPoint(-0.1, -(self.base_metal_separation / 2 - 1) + 0.3),
+            pya.DPoint(-self.taper_width / 2, -(self.base_metal_separation / 2) + 0.3),
         ]
         finger_under_pts2 = [
-            pya.DPoint(self.taper_width / 2, -(self.pad_to_pad_separation / 2)),
-            pya.DPoint(0.1, -(self.pad_to_pad_separation / 2 - 1)),
-            pya.DPoint(0.1, -(self.pad_to_pad_separation / 2 - 1) + 0.3),
-            pya.DPoint(self.taper_width / 2, -(self.pad_to_pad_separation / 2) + 0.3),
+            pya.DPoint(self.taper_width / 2, -(self.base_metal_separation / 2)),
+            pya.DPoint(0.1, -(self.base_metal_separation / 2 - 1)),
+            pya.DPoint(0.1, -(self.base_metal_separation / 2 - 1) + 0.3),
+            pya.DPoint(self.taper_width / 2, -(self.base_metal_separation / 2) + 0.3),
         ]
 
         finger_under_pts3 = [
@@ -242,19 +251,19 @@ class Overlap2(Junction):
             pya.DPoint(-self.hook_width / 2, self.bridge_gap / 2 + self.hook_thickness),
             pya.DPoint(-self.hook_width / 2, self.bridge_gap / 2),
             pya.DPoint(self.hook_width / 2, self.bridge_gap / 2),
-            pya.DPoint(self.hook_width / 2, (self.pad_to_pad_separation / 2 - 1)),
-            pya.DPoint(self.taper_width / 2, self.pad_to_pad_separation / 2),
+            pya.DPoint(self.hook_width / 2, (self.base_metal_separation / 2 - 1)),
+            pya.DPoint(self.taper_width / 2, self.base_metal_separation / 2),
             pya.DPoint(
                 self.taper_width / 2,
-                self.pad_to_pad_separation / 2 + self.pad_offset + 1,
+                self.base_metal_separation / 2 + self.pad_offset + 1,
             ),
             pya.DPoint(
                 -self.taper_width / 2,
-                self.pad_to_pad_separation / 2 + self.pad_offset + 1,
+                self.base_metal_separation / 2 + self.pad_offset + 1,
             ),
-            pya.DPoint(-self.taper_width / 2, self.pad_to_pad_separation / 2),
-            pya.DPoint(-self.hook_thickness / 2, (self.pad_to_pad_separation / 2 - 1)),
-            pya.DPoint(self.hook_width / 2 - 0.2, (self.pad_to_pad_separation / 2 - 1)),
+            pya.DPoint(-self.taper_width / 2, self.base_metal_separation / 2),
+            pya.DPoint(-self.hook_thickness / 2, (self.base_metal_separation / 2 - 1)),
+            pya.DPoint(self.hook_width / 2 - 0.2, (self.base_metal_separation / 2 - 1)),
             pya.DPoint(
                 self.hook_width / 2 - 0.2, self.bridge_gap / 2 + self.hook_thickness + 1
             ),
@@ -269,18 +278,18 @@ class Overlap2(Junction):
             pya.DPoint(self.finger_width / 2, -self.bridge_gap / 2),
             pya.DPoint(self.finger_width / 2, -self.bridge_gap / 2 - 1),
             pya.DPoint(0.1, -self.bridge_gap / 2 - 1),
-            pya.DPoint(0.1, -(self.pad_to_pad_separation / 2 - 1)),
-            pya.DPoint(self.taper_width / 2, -self.pad_to_pad_separation / 2),
+            pya.DPoint(0.1, -(self.base_metal_separation / 2 - 1)),
+            pya.DPoint(self.taper_width / 2, -self.base_metal_separation / 2),
             pya.DPoint(
                 self.taper_width / 2,
-                -self.pad_to_pad_separation / 2 - self.pad_offset - 1,
+                -self.base_metal_separation / 2 - self.pad_offset - 1,
             ),
             pya.DPoint(
                 -self.taper_width / 2,
-                -self.pad_to_pad_separation / 2 - self.pad_offset - 1,
+                -self.base_metal_separation / 2 - self.pad_offset - 1,
             ),
-            pya.DPoint(-self.taper_width / 2, -self.pad_to_pad_separation / 2),
-            pya.DPoint(-0.1, -(self.pad_to_pad_separation / 2 - 1)),
+            pya.DPoint(-self.taper_width / 2, -self.base_metal_separation / 2),
+            pya.DPoint(-0.1, -(self.base_metal_separation / 2 - 1)),
             pya.DPoint(-0.1, -self.bridge_gap / 2 - 1),
             pya.DPoint(-self.finger_width / 2, -self.bridge_gap / 2 - 1),
         ]
@@ -331,42 +340,42 @@ class Overlap2(Junction):
             ),
         ]
         hook_under_pts1 = [
-            pya.DPoint(self.taper_width / 2, (self.pad_to_pad_separation / 2)),
-            pya.DPoint(self.hook_width / 2, (self.pad_to_pad_separation / 2 - 1)),
-            pya.DPoint(self.hook_width / 2, (self.pad_to_pad_separation / 2 - 1) - 0.3),
+            pya.DPoint(self.taper_width / 2, (self.base_metal_separation / 2)),
+            pya.DPoint(self.hook_width / 2, (self.base_metal_separation / 2 - 1)),
+            pya.DPoint(self.hook_width / 2, (self.base_metal_separation / 2 - 1) - 0.3),
             pya.DPoint(
-                self.hook_width / 2 + 0.3, (self.pad_to_pad_separation / 2 - 1) - 0.3
+                self.hook_width / 2 + 0.3, (self.base_metal_separation / 2 - 1) - 0.3
             ),
-            pya.DPoint(self.hook_width / 2 + 0.3, (self.pad_to_pad_separation / 2 - 1)),
-            pya.DPoint(self.taper_width / 2 + 0.3, (self.pad_to_pad_separation / 2)),
+            pya.DPoint(self.hook_width / 2 + 0.3, (self.base_metal_separation / 2 - 1)),
+            pya.DPoint(self.taper_width / 2 + 0.3, (self.base_metal_separation / 2)),
         ]
         hook_under_pts2 = [
-            pya.DPoint(-self.taper_width / 2, (self.pad_to_pad_separation / 2)),
-            pya.DPoint(-self.hook_thickness / 2, (self.pad_to_pad_separation / 2 - 1)),
+            pya.DPoint(-self.taper_width / 2, (self.base_metal_separation / 2)),
+            pya.DPoint(-self.hook_thickness / 2, (self.base_metal_separation / 2 - 1)),
             pya.DPoint(
-                -self.hook_thickness / 2 - 0.3, (self.pad_to_pad_separation / 2 - 1)
+                -self.hook_thickness / 2 - 0.3, (self.base_metal_separation / 2 - 1)
             ),
-            pya.DPoint(self.hook_width / 2 - 0.2, (self.pad_to_pad_separation / 2 - 1)),
+            pya.DPoint(self.hook_width / 2 - 0.2, (self.base_metal_separation / 2 - 1)),
             pya.DPoint(
-                self.hook_width / 2 - 0.2, (self.pad_to_pad_separation / 2 - 1.3)
+                self.hook_width / 2 - 0.2, (self.base_metal_separation / 2 - 1.3)
             ),
             pya.DPoint(
-                -self.hook_thickness / 2, (self.pad_to_pad_separation / 2 - 1.3)
+                -self.hook_thickness / 2, (self.base_metal_separation / 2 - 1.3)
             ),
-            pya.DPoint(-self.taper_width / 2 - 0.3, (self.pad_to_pad_separation / 2)),
+            pya.DPoint(-self.taper_width / 2 - 0.3, (self.base_metal_separation / 2)),
         ]
 
         finger_under_pts1 = [
-            pya.DPoint(-self.taper_width / 2, -(self.pad_to_pad_separation / 2)),
-            pya.DPoint(-0.1, -(self.pad_to_pad_separation / 2 - 1)),
-            pya.DPoint(-0.1, -(self.pad_to_pad_separation / 2 - 1) + 0.3),
-            pya.DPoint(-self.taper_width / 2, -(self.pad_to_pad_separation / 2) + 0.3),
+            pya.DPoint(-self.taper_width / 2, -(self.base_metal_separation / 2)),
+            pya.DPoint(-0.1, -(self.base_metal_separation / 2 - 1)),
+            pya.DPoint(-0.1, -(self.base_metal_separation / 2 - 1) + 0.3),
+            pya.DPoint(-self.taper_width / 2, -(self.base_metal_separation / 2) + 0.3),
         ]
         finger_under_pts2 = [
-            pya.DPoint(self.taper_width / 2, -(self.pad_to_pad_separation / 2)),
-            pya.DPoint(0.1, -(self.pad_to_pad_separation / 2 - 1)),
-            pya.DPoint(0.1, -(self.pad_to_pad_separation / 2 - 1) + 0.3),
-            pya.DPoint(self.taper_width / 2, -(self.pad_to_pad_separation / 2) + 0.3),
+            pya.DPoint(self.taper_width / 2, -(self.base_metal_separation / 2)),
+            pya.DPoint(0.1, -(self.base_metal_separation / 2 - 1)),
+            pya.DPoint(0.1, -(self.base_metal_separation / 2 - 1) + 0.3),
+            pya.DPoint(self.taper_width / 2, -(self.base_metal_separation / 2) + 0.3),
         ]
 
         shift_finger = -self.taper_width / 2
@@ -399,18 +408,18 @@ class Overlap2(Junction):
             ),
             pya.DPoint(shift_hook + self.taper_width / 2, self.bridge_gap / 2),
             pya.DPoint(
-                shift_hook + self.taper_width / 2, self.pad_to_pad_separation / 2
+                shift_hook + self.taper_width / 2, self.base_metal_separation / 2
             ),
             pya.DPoint(
                 shift_hook + self.taper_width / 2,
-                self.pad_to_pad_separation / 2 + self.pad_offset + 1,
+                self.base_metal_separation / 2 + self.pad_offset + 1,
             ),
             pya.DPoint(
                 shift_hook + -self.taper_width / 2,
-                self.pad_to_pad_separation / 2 + self.pad_offset + 1,
+                self.base_metal_separation / 2 + self.pad_offset + 1,
             ),
             pya.DPoint(
-                shift_hook + -self.taper_width / 2, self.pad_to_pad_separation / 2
+                shift_hook + -self.taper_width / 2, self.base_metal_separation / 2
             ),
         ]
 
@@ -419,11 +428,11 @@ class Overlap2(Junction):
             pya.DPoint(shift_finger + self.finger_width / 2, -self.bridge_gap / 2),
             pya.DPoint(
                 shift_finger + self.finger_width / 2,
-                -self.pad_to_pad_separation / 2 - self.pad_offset - 1,
+                -self.base_metal_separation / 2 - self.pad_offset - 1,
             ),
             pya.DPoint(
                 shift_finger - self.finger_width / 2,
-                -self.pad_to_pad_separation / 2 - self.pad_offset - 1,
+                -self.base_metal_separation / 2 - self.pad_offset - 1,
             ),
         ]
 
@@ -451,7 +460,7 @@ class Overlap2(Junction):
     def _add_refpoints(self):
         """Adds the "origin_squid" refpoint and port "common"."""
         self.refpoints["origin_squid"] = pya.DPoint(0, 0)
-        self.add_port("common", pya.DPoint(0, 0))
+        self.add_port("common", pya.DPoint(0, self.base_metal_separation))
 
     def _produce_ground_metal_shapes(self):
         """Produces hardcoded shapes in metal gap and metal addition layers."""
@@ -459,11 +468,11 @@ class Overlap2(Junction):
 
         if self.noSQUID:
             x0 = self.taper_width / 2
-            y0 = -self.pad_to_pad_separation / 2
+            y0 = -self.base_metal_separation / 2
             shift_finger = 0
         else:
             x0 = self.finger_width / 2
-            y0 = -self.pad_to_pad_separation / 2
+            y0 = -self.base_metal_separation / 2
             shift_finger = -self.taper_width / 2
 
         bottom_pts = [
@@ -487,11 +496,11 @@ class Overlap2(Junction):
             # metal additions top
             if self.noSQUID:
                 x0 = self.taper_width / 2
-                y0 = self.pad_to_pad_separation / 2
+                y0 = self.base_metal_separation / 2
                 shift_hook = 0
             else:
                 x0 = self.taper_width / 2
-                y0 = self.pad_to_pad_separation / 2
+                y0 = self.base_metal_separation / 2
                 shift_hook = self.hook_width / 2
 
             top_pts = [
