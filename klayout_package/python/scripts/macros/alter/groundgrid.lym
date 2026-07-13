@@ -57,8 +57,8 @@ insert_ground_grid(
     target_layer=default_layers[f"{face}_ground_grid"],
     grid_area=grid_area,
     protection=cell.begin_shapes_rec(layout.layer(default_layers[f"{face}_ground_grid_avoidance"])),
-    grid_step=10 * (1 / layout.dbu) * grid_mag_factor,
-    grid_size=5 * (1 / layout.dbu) * grid_mag_factor,
+    grid_step=15 * (1 / layout.dbu) * grid_mag_factor,
+    grid_size=3 * (1 / layout.dbu) * grid_mag_factor,
 )
 </text>
 </klayout-macro>

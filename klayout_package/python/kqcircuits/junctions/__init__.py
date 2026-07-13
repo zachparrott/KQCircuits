@@ -34,8 +34,9 @@ junction_type_choices = [
     "Super Inductor",
     "Sim",
     "Overlap",
+    "Overlap2",
     # "Test Array",
     "Overlap Array",
     "Overlap Simple",
-    "Overlap Simple Series"
+    "Overlap Simple Series",
 ]
