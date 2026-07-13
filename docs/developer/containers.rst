@@ -9,9 +9,9 @@ The image can be built manually from the root of the repository with ``-f ci/Doc
 Additionally, the KLayout version can be specified with ``--build-arg`` options by
 providing the name of the KLayout package as ``KL_FILE`` and its MD5 hash as ``KL_HASH``::
 
-  docker build -t kqcircuits -f ci/Dockerfile --build-arg KL_FILE=klayout_0.30.1-1_amd64.deb --build-arg KL_HASH=11953ce5009a0e83f9840b506f80df49 .
+  docker build -t kqcircuits -f ci/Dockerfile --build-arg KL_FILE=klayout_0.30.5-1_amd64.deb --build-arg KL_HASH=c63629bdebe20261c2cfaaa0827c6ab8 .
 
-See possible versions and hashes for Ubuntu 22 in the `KLayout website <https://www.klayout.de/build.html>`_.
+See possible versions and hashes for Ubuntu 24 in the `KLayout website <https://www.klayout.de/build.html>`_.
 
 
 CLI usage
@@ -62,8 +62,9 @@ Singularity usage
 Singularity images are like docker images that work better
 in HPC environments. Singularity images are managed using apptainer (https://apptainer.org/).
 The latest image of a KQCircuits compatible Elmer installation can be downloaded from the
-`GitHub Container registry <https://github.com/iqm-finland/KQCircuits/pkgs/container/kqcircuits/397719722?tag=main-singularity>`__.
-Sinularity images can be pulled to Linux operating systems and also to Windows Subsystem for Linux (WSL).
+`GitHub Container registry <https://github.com/iqm-finland/KQCircuits/pkgs/container/kqcircuits/versions>`__
+using the ``main-singularity`` tag.
+Singularity images can be pulled to Linux operating systems and also to Windows Subsystem for Linux (WSL).
 
 Install apptainer (substituting 1.4.0 to whatever version is the most recent)::
 
@@ -102,7 +103,7 @@ Then (if you haven't already) follow the Standalone installation guide :ref:`sta
 including ``simulations`` or ``sim-requirements.txt`` requirements. Notice that for WSL, a separate
 `"venv" <https://docs.python.org/3/library/venv.html>`__ virtual environment needs to be created for WSL terminal.
 
-Thats it! Try running ``kqc sim waveguide_sim_compare.py`` to see that it runs the simulations.
+Thats it! Try running ``kqc sim waveguides_sim_compare.py`` to see that it runs the simulations.
 
 If you want to build the Singularity image yourself, in the :git_url:`singularity` folder run::
 

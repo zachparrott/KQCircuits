@@ -79,6 +79,7 @@ def export_elmer_json(
     sim_data = simulation.get_simulation_data()
     sol_data = solution.get_solution_data()
     full_name = simulation.name + solution.name
+    parent_name = sim_data.get("parent_simulation", "") + sol_data.get("parent_solution", "")
 
     if is_cross_section:
         sif_names = [f"{full_name}_C"]
@@ -103,6 +104,7 @@ def export_elmer_json(
         **sol_data,
         "sif_names": sif_names,
         "gds_file": gds_file,
+        "parent_name": parent_name,
         "parameters": get_combined_parameters(simulation, solution),
     }
 
@@ -262,6 +264,19 @@ def export_elmer_script(
             ]
             return lines
 
+        # Write python script used to automatically check for warnings in remote simulations
+        with open(path.joinpath("check_warnings.py"), "w", encoding="utf-8") as file:
+            file.write(
+                "\n".join(
+                    [
+                        "# This script is run automatically after remote simulations",
+                        "# Manual usage: python check_warnings.py [simulation_name]",
+                        "import sys",
+                        "from scripts.run_helpers import elmer_check_warnings",
+                        r"elmer_check_warnings(f'log_files/{sys.argv[1]}.Elmer.log')",
+                    ]
+                )
+            )
         sbatch_parameters = workflow["sbatch_parameters"]
 
         parallelization_level = workflow["_parallelization_level"]
@@ -366,7 +381,7 @@ def export_elmer_script(
             python_run_cmd = f'{python_executable} -u "{execution_script}" "{Path(json_filename).relative_to(path)}"'
 
             def get_log_cmd(logfile_suffix, filename=simulation_name):
-                return f'2>&1 >> "log_files/{filename}.{logfile_suffix}.log"\n'
+                return f'>> "log_files/{filename}.{logfile_suffix}.log"\n'
 
             script_lines = ["set -e\n"]
 
@@ -425,7 +440,7 @@ def export_elmer_script(
             python_run_cmd = f'{python_executable} -u "{execution_script}" "{Path(json_filename).relative_to(path)}"'
 
             def get_log_cmd(logfile_suffix, filename=simulation_name):  # pylint: disable=function-redefined
-                return f'2>&1 >> "log_files/{filename}.{logfile_suffix}.log"\n'
+                return f'>> "log_files/{filename}.{logfile_suffix}.log"\n'
 
             script_lines = ["set -e\n", _sim_part_echo(i, "Elmer")]
 
@@ -433,9 +448,11 @@ def export_elmer_script(
                 for sif in sif_list:
                     sif_path = f"{simulation_name}/{sif}.sif"
                     script_lines.append(
-                        f'{srun_cmd_elmer} ElmerSolver_mpi "{sif_path}" 2>&1 >> "log_files/{sif}.Elmer.log" & \n'
+                        f'{srun_cmd_elmer} ElmerSolver_mpi "{sif_path}" >> "log_files/{sif}.Elmer.log" & \n'
                     )
                 script_lines.append("wait\n")
+                for sif in sif_list:
+                    script_lines.append(f"python check_warnings.py {sif} 1>/dev/null\n")
 
             script_lines += [
                 _sim_part_echo(i, "write results json"),
@@ -467,21 +484,28 @@ def export_elmer_script(
         if compile_elmer_modules:
             main_script_lines.append(elmer_compile_str)
 
+        def _prepare_workload_manager(script_lines, simulation_cmds, suffix=""):
+            """Writes simulation_cmds to a file and adds a line in script_lines for running
+            the simulations using simple_workload_manager"""
+            sim_list_fname = f"{file_prefix}_{suffix}.txt"
+            with open(path / sim_list_fname, "w", encoding="utf-8") as f:
+                f.write("\n".join(simulation_cmds))
+
+            run_cmd = Path(script_folder) / "simple_workload_manager.py"
+            script_lines.append(f"{python_executable} {run_cmd} {n_workers} {sim_list_fname}\n")
+
         if parallelize_workload:
             export_kw = "export" if use_sh else "set"
             main_script_lines.append(f"{export_kw} OMP_NUM_THREADS={workflow['elmer_n_threads']}\n")
-            main_script_lines.append(
-                f"{python_executable} {Path(script_folder) / 'simple_workload_manager.py'} {n_workers}"
-            )
 
-        dependent_sims = []
+        full_sims, dependent_sims = [], []
         for i, json_filename in enumerate(json_filenames):
             (simulation_name, mesh_name) = _get_from_json(json_filename, ["name", "mesh_name"])
             python_run_cmd = f'{python_executable} "{execution_script}" "{Path(json_filename).relative_to(path)}"'
 
             def get_log_cmd(logfile_suffix, filename=simulation_name):
                 log_file = Path("log_files") / f"{filename}.{logfile_suffix}.log"
-                return f'2>&1 >> "{log_file}"\n'
+                return f'>> "{log_file}"\n'
 
             script_filename = str(path.joinpath(simulation_name + extension))
 
@@ -505,9 +529,9 @@ def export_elmer_script(
 
             script_path = Path(script_filename).relative_to(path)
             if parallelize_workload:
-                script_cmd = f' "./{script_path}"' if use_sh else f" {script_path}"
+                script_cmd = f"./{script_path}" if use_sh else f"{script_path}"
                 if mesh_name == simulation_name:
-                    main_script_lines.append(script_cmd)
+                    full_sims.append(script_cmd)
                 else:
                     dependent_sims.append(script_cmd)
             else:
@@ -518,16 +542,16 @@ def export_elmer_script(
                     f"{script_cmd}\n",
                 ]
 
-        if dependent_sims:
-            main_script_lines.append(
-                f"\n{python_executable} {Path(script_folder)/'simple_workload_manager.py'} {n_workers}"
-            )
-            main_script_lines += dependent_sims
+        if parallelize_workload:
+            if full_sims:
+                _prepare_workload_manager(main_script_lines, full_sims, suffix="simlist_independent")
+            if dependent_sims:
+                _prepare_workload_manager(main_script_lines, dependent_sims, suffix="simlist_dependent")
 
         main_script_lines += [
             '\necho "--------------------------------------------"\n',
             'echo "Write versions file"\n',
-            f"{python_run_cmd} --write-versions-file\n",
+            f"{python_run_cmd} --write-versions-file 1>/dev/null\n",
         ]
 
     main_script_lines.append("\n" + get_post_process_command_lines(post_process, path, json_filenames))
@@ -620,6 +644,9 @@ def export_elmer(
                     mesh_reuse_name[j] if mesh_reuse_name[j] else (sim_objects[j].name + sol_objects[j].name)
                 )
                 break
+
+    if workflow["delete_meshes"] and any(mesh_reuse_name):
+        raise NotImplementedError('workflow["delete_meshes"] is not supported with Solution sweeps')
 
     json_filenames = []
     for simulation, solution, mesh_reuse in zip(sim_objects, sol_objects, mesh_reuse_name):
@@ -748,6 +775,8 @@ def _update_elmer_workflow(simulations, common_solution, workflow):
         workflow["elmer_n_processes"] = n_processes
         workflow["elmer_n_threads"] = n_threads
         workflow["gmsh_n_threads"] = gmsh_n_threads
+
+        workflow["delete_meshes"] = workflow.get("delete_meshes", False)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-q", "--quiet", action="store_true")

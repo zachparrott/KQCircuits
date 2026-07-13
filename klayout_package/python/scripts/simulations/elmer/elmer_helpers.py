@@ -80,6 +80,7 @@ def sif_common_header(
     output_file: str | None = None,
     restart_file: str | None = None,
     restart_position: int | None = None,
+    additional_simulation_lines: list[str] | None = None,
 ) -> str:
     """
     Returns common header and simulation blocks of a sif file in string format.
@@ -124,7 +125,8 @@ def sif_common_header(
         + ([] if angular_frequency is None else [f"Angular Frequency = {angular_frequency}"])
         + ([f'Output File = "{output_file}"', "Binary Output = True", "Output Intervals(1) = 1"] if output_file else [])
         + ([f'Restart File = "{restart_file}"'] if restart_file else [])
-        + ([f"Restart Position = {restart_position}"] if restart_position is not None else []),
+        + ([f"Restart Position = {restart_position}"] if restart_position is not None else [])
+        + (additional_simulation_lines if additional_simulation_lines is not None else []),
     )
     return res
 
@@ -160,6 +162,12 @@ def sif_matc_block(data: list[str]) -> str:
     return "".join(f"$  {line}\n" for line in data)
 
 
+def is_direct_method(linsys_method: str) -> bool:
+    """Helper to check if a linear system method is direct or iterative"""
+    linsys_method = linsys_method.lower()
+    return linsys_method in ["umfpack", "pardiso", "superlu"] or linsys_method.endswith("mumps")
+
+
 def sif_linsys(json_data: dict) -> list[str]:
     """
     Returns a linear system definition in sif format.
@@ -179,7 +187,7 @@ def sif_linsys(json_data: dict) -> list[str]:
     linsys_method = json_data["linear_system_method"].lower()
     preconditioner = json_data["linear_system_preconditioning"]
 
-    if linsys_method in ["umfpack", "mumps", "pardiso", "superlu"]:
+    if is_direct_method(linsys_method):
         # direct methods
         linsys += [
             'Linear System Solver = String "Direct"',
@@ -192,25 +200,31 @@ def sif_linsys(json_data: dict) -> list[str]:
             "Linear System Solver = Iterative",
             f"Linear System Max Iterations = Integer {json_data['max_iterations']}",
             f"Linear System Convergence Tolerance = {json_data['convergence_tolerance']}",
-            "Linear System Abort Not Converged = False",
+            f"Linear System Abort Not Converged = Logical {json_data['abort_not_converged']}",
         ]
 
-        if linsys_method == "mg":
+        if json_data["use_multigrid_solver"]:
+            lowest_method = json_data["mg_lowest_method"]
+            lowest_itdir = "Direct" if is_direct_method(lowest_method) else "Iterative"
             linsys += [
-                "Linear System Iterative Method = GCR ",
-                "Linear System Residual Output = 10",
-                "Linear System Preconditioning = multigrid !ILU2",
+                f"Linear System Iterative Method = {linsys_method}",
+                "Linear System Residual Output = 1",
+                "Linear System Preconditioning = multigrid",
                 "Linear System Refactorize = False",
                 "MG Method = p",
                 "MG Levels = $pn",
                 # SGS has some problems with parallel performance. As an alternative, more reliable
                 # CG could be used, but on average it seems to lead to even worse convergence
-                "MG Smoother = SGS",
-                "MG Pre Smoothing iterations = 2",
-                "MG Post Smoothing Iterations = 2",
-                "MG Lowest Linear Solver = iterative",
+                f"MG Smoother = {json_data['mg_smoother']}",
+                f"MG Smoother Relaxation Factor = $ {json_data['mg_relaxation_factor']}",
+                f"MG Pre Smoothing iterations = {json_data['mg_smoothing_iterations']}",
+                f"MG Post Smoothing Iterations = {json_data['mg_smoothing_iterations']}",
+                f"MG Lowest Linear Solver = {lowest_itdir}",
+                # Show no output and no abort in the inner mglowest solver
+                "mglowest: Linear system residual output = 0",
+                "mglowest: Linear System Abort Not Converged = False",
                 "mglowest: Linear System Scaling = False",
-                "mglowest: Linear System Iterative Method = CG !BiCGStabl",
+                f"mglowest: Linear System {lowest_itdir} Method = {lowest_method}",
                 f"mglowest: Linear System Preconditioning = {preconditioner}",
                 "mglowest: Linear System Max Iterations = 1000",
                 "mglowest: Linear System Convergence Tolerance = 1.0e-4",
@@ -282,7 +296,7 @@ def get_port_solver(json_data: dict[str, Any], ordinate: int | str) -> str:
         "Linear System Convergence Tolerance = 1.0e-5",
         "Linear System Residual Output = 0",
         "Linear System Max Iterations = 5000",
-        "linear system abort not converged = false",
+        f"Linear System Abort Not Converged = Logical {json_data['abort_not_converged']}",
     ]
     if json_data["maximum_passes"] > 1:
         solver_lines += sif_adaptive_mesh(json_data)
@@ -310,6 +324,8 @@ def get_vector_helmholtz(
         vector Helmholtz in sif file format
     """
     use_av = json_data["use_av"]
+    linsys_method = json_data["linear_system_method"]
+    itdir_str = "Direct" if is_direct_method(linsys_method) else "Iterative"
 
     lumping_lines = [
         "! Model lumping",
@@ -324,8 +340,11 @@ def get_vector_helmholtz(
     ]
 
     linear_system_lines = [
-        "Linear System Symmetric = Logical False",
+        "Linear System Symmetric = Logical True",
+        "Linear System Complex = Logical True",
         "Steady State Convergence Tolerance = 1e-09",
+        f"Linear System Abort Not Converged = Logical {json_data['abort_not_converged']}",
+        "Simplicial Mesh = Logical True",
     ]
 
     if use_av:
@@ -371,11 +390,10 @@ def get_vector_helmholtz(
             ]
         else:
             linear_system_lines += [
-                "Linear system complex = Logical True",
                 "Linear System Preconditioning Damp Coefficient im = -0.5",
                 "Mass-proportional Damping = Logical True",
-                'Linear System Solver = String "iterative"',
-                'Linear System Iterative Method = String "GCR"',
+                f"Linear System Solver = String {itdir_str}",
+                f"Linear System {itdir_str} Method = String {linsys_method}",
                 "Linear System GCR Restart = 200",
                 "Linear System Row Equilibration = Logical True",
                 "linear system normwise backward error = Logical True",
@@ -383,21 +401,52 @@ def get_vector_helmholtz(
                 "Linear System ILUT Tolerance = 1.5e-1",
                 f"Linear System Max Iterations = Integer {json_data['max_iterations']}",
                 f"Linear System Convergence Tolerance = {json_data['convergence_tolerance']}",
-                "linear system abort not converged = Logical False",
                 "Linear System Residual Output = 1",
             ]
 
         linear_system_lines += [
-            "linear system abort not converged = false",
             "Linear System Nullify Guess = Logical True",
         ]
 
-    else:
-        linear_system_lines += [
-            "Linear system complex = Logical True",
-            'Linear System Solver = String "Direct"',
-            'Linear system direct method = "mumps"',
-        ]
+    else:  # Not AV
+        if json_data["use_multigrid_solver"]:
+            lowest_method = json_data["mg_lowest_method"]
+            lowest_itdir_str = "Direct" if is_direct_method(lowest_method) else "Iterative"
+            linear_system_lines += [
+                "Linear System Solver = Iterative",
+                "Linear System Scaling = True",
+                f"Linear System Iterative Method = {linsys_method}",
+                f"Linear System Max Iterations = {json_data['max_iterations']}",
+                f"Linear System GCR Restart = {json_data['max_iterations']}",
+                "Linear System Residual Output = 1",
+                f"Linear System Convergence Tolerance = {json_data['convergence_tolerance']}",
+                "Linear System Preconditioning = Multigrid",
+                "! Mg parameters only active when $pn>2 and prec set to multigrid",
+                "Edge Basis = True",
+                "MG Method = p",
+                "MG Levels = 2",
+                f"MG Smoother Relaxation Factor = $ {json_data['mg_relaxation_factor']}",
+                f"MG Smoother = {json_data['mg_smoother']}",
+                f"MG Pre Smoothing iterations = {json_data['mg_smoothing_iterations']}",
+                f"MG Post Smoothing Iterations = {json_data['mg_smoothing_iterations']}",
+                "MG Max Iterations = 1",
+                f"MG Preconditioning = {json_data['linear_system_preconditioning']}",
+                f"MG Lowest Linear Solver = {lowest_itdir_str}",
+                f"mglowest: Linear System {lowest_itdir_str} Method = {lowest_method}",
+                "! If you run out of memory, increase this",
+                "Mumps Percentage Increase Working Space = Integer 50",
+            ]
+        else:
+            linear_system_lines += [
+                f"Linear System Solver = String {itdir_str}",
+                f"Linear system {itdir_str} method = {linsys_method}",
+            ]
+            if not is_direct_method(linsys_method):
+                linear_system_lines += [
+                    f"Linear System Convergence Tolerance = {json_data['convergence_tolerance']}",
+                    f"Linear System Preconditioning ={json_data['linear_system_preconditioning']}",
+                    f"Linear System Max Iterations = {json_data['max_iterations']}",
+                ]
 
     solver_lines = [
         "exec solver = Always",
@@ -558,7 +607,7 @@ def get_magneto_dynamics_2d_harmonic_solver(
         "Linear System Convergence Tolerance = 1.e-10",
         "Linear System Max Iterations = 3000",  # TODO inductanceSolution
         "Linear System Residual Output = 10",
-        "Linear System Abort not Converged = False",
+        f"Linear System Abort Not Converged = Logical {json_data['abort_not_converged']}",
         "Linear System ILUT Tolerance=1e-8",
         "BicgStabL Polynomial Degree = 6",
         "Steady State Convergence Tolerance = 1e-05",
@@ -905,6 +954,39 @@ def sif_placeholder_boundaries(groups: list[str], n_boundaries: int) -> str:
     return boundary_conditions
 
 
+def get_simulation_restart_solver(ordinate: str | int, parent_name: str, path: Path) -> str:
+    """
+    Returns solver for loading existing Elmer results from a .result file exported by setting
+    `save_elmer_results=True`. Does not solve anything, but allocates required data structures.
+
+    Assumes the field variable to be "Potential" and renames it to "ParentPotential".
+
+    Args:
+        ordinate: solver ordinate
+        parent_name: Name of the simulation to be loaded
+        path: simulation folder path
+
+    Returns:
+        solver in sif file format
+    """
+    with open(path / f"{parent_name}.json", encoding="utf-8") as f:
+        json_data = json.load(f)
+    mesh_name = json_data["mesh_name"]
+
+    solver_lines = [
+        'Equation = "CoarseRestart"',
+        'Procedure = "AllocateSolver" "AllocateSolver"',
+        "Exec Solver = never",
+        f'Mesh = "{mesh_name}"',
+        f'Restart File = File "../{mesh_name}/{parent_name}.result"',
+        "Restart Variable 1 = String Potential",
+        "Target Variable 1 = String ParentPotential",
+        "Restart Error Continue = Logical True",
+    ]
+
+    return sif_block(f"Solver {ordinate}", solver_lines)
+
+
 def sif_epr_3d(json_data: dict[str, Any], folder_path: Path, vtu_name: str | Path) -> str:
     """
     Returns 3D EPR simulation sif
@@ -926,6 +1008,16 @@ def sif_epr_3d(json_data: dict[str, Any], folder_path: Path, vtu_name: str | Pat
     c_matrix_output = not bool(voltage_exc)
     mesh_path = Path(json_data["mesh_name"])
 
+    submodel_restart_lines = None
+    parent_name = json_data["parent_name"]
+    if parent_name:
+        submodel_restart_lines = [
+            "Initialize Dirichlet Conditions = False",
+            "Restart Before Initial Conditions = Logical True",
+            "Restart Error Continue = Logical True",
+            "Use Mesh Projector = Logical False",
+        ]
+
     header = sif_common_header(
         json_data,
         folder_path,
@@ -934,7 +1026,9 @@ def sif_epr_3d(json_data: dict[str, Any], folder_path: Path, vtu_name: str | Pat
         dim=3,
         constraint_modes_analysis=c_matrix_output,
         output_file=(f"{folder_path}.result" if json_data["save_elmer_data"] else None),
+        additional_simulation_lines=submodel_restart_lines,
     )
+
     constants = sif_block("Constants", [f"Permittivity Of Vacuum = {epsilon_0}"])
 
     solvers = get_electrostatics_solver(
@@ -947,10 +1041,6 @@ def sif_epr_3d(json_data: dict[str, Any], folder_path: Path, vtu_name: str | Pat
         ordinate=2,
         output_file_name=vtu_name,
         exec_solver="Always" if json_data["vtu_output"] else "Never",
-    )
-    equations = get_equation(
-        ordinate=1,
-        solver_ids=[1],
     )
 
     body_names, boundary_names = read_mesh_names(mesh_path)
@@ -974,6 +1064,17 @@ def sif_epr_3d(json_data: dict[str, Any], folder_path: Path, vtu_name: str | Pat
         energy_file="energy.dat",
         bodies=mesh_bodies,
         sheet_bodies=mesh_boundaries,
+    )
+
+    if parent_name:
+        solvers += get_simulation_restart_solver(5, parent_name, folder_path.parent)
+        equations_ids = [5, 1]
+    else:
+        equations_ids = [1]
+
+    equations = get_equation(
+        ordinate=1,
+        solver_ids=equations_ids,
     )
 
     bodies = ""
@@ -1020,12 +1121,15 @@ def sif_epr_3d(json_data: dict[str, Any], folder_path: Path, vtu_name: str | Pat
     boundary_conditions = ""
     n_bcs = 1
 
+    if parent_name:
+        outer_condition = ["Potential = Equals ParentPotential"]
+    elif json_data.get("electric_infinity_bc", False):
+        outer_condition = ["Electric Infinity BC = Logical True"]
+    else:
+        outer_condition = ["! Placeholder"]
+
     boundary_conditions += sif_boundary_condition(
-        ordinate=n_bcs,
-        target_boundaries=["domain_boundary"],
-        conditions=[
-            "Electric Infinity BC = Logical True" if json_data.get("electric_infinity_bc", False) else "! Placeholder"
-        ],
+        ordinate=n_bcs, target_boundaries=["domain_boundary"], conditions=outer_condition
     )
 
     # tls bcs
@@ -1880,9 +1984,23 @@ def read_snp_file(filename: str | Path) -> tuple[np.ndarray, np.ndarray, bool, f
     return frequencies, smatrix_arr, polar_form, renormalization, port_data
 
 
+def delete_meshes(path, simname):
+    """Deletes Elmer and Gmsh meshes corresponding to simname"""
+    sif_folder = path / simname
+    (path / f"{simname}.msh").unlink(missing_ok=True)
+    elmer_mesh_files = ["mesh.nodes", "mesh.elements", "mesh.boundary"]
+    for ef in elmer_mesh_files:
+        (sif_folder / ef).unlink(missing_ok=True)
+    for part_folder in sif_folder.glob("partitioning.*"):
+        if part_folder.is_dir():
+            shutil.rmtree(part_folder)
+
+
 def write_project_results_json(json_data: dict[str, Any], path: Path, polar_form: bool = True) -> None:
     """
     Writes the solution data in '_project_results.json' format for one Elmer simulation.
+
+    Deletes Gmsh and Elmer mesh files if json_data["workflow"]["delete_meshes"] is True
 
     If tool is capacitance, writes capacitance matrix
     If tool is epr_3d or capacitance with integrate energies=True, writes energies
@@ -1897,6 +2015,8 @@ def write_project_results_json(json_data: dict[str, Any], path: Path, polar_form
     simname = json_data["name"]
     sif_folder = path / simname
     result_json_path = path / (simname + "_project_results.json")
+    if json_data["workflow"]["delete_meshes"]:
+        delete_meshes(path, simname)
 
     if tool in ("capacitance", "epr_3d"):
         results = {}

@@ -15,8 +15,22 @@
 # (meetiqm.com/iqm-open-source-trademark-policy). IQM welcomes contributions to the code.
 # Please see our contribution agreements for individuals (meetiqm.com/iqm-individual-contributor-license-agreement)
 # and organizations (meetiqm.com/iqm-organization-contributor-license-agreement).
-
 from dataclasses import dataclass
+from copy import deepcopy
+
+try:
+    # Python 3.14+
+    from annotationlib import Format, get_annotations
+
+    def _class_annotations(cls):
+        return get_annotations(cls, format=Format.FORWARDREF)
+
+except ImportError:
+    # Python 3.11–3.13
+    from inspect import get_annotations
+
+    def _class_annotations(cls):
+        return get_annotations(cls, eval_str=False)
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -31,4 +45,13 @@ class Solution:
 
     def get_parameters(self):
         """Returns class parameters (also ClassVar parameters) in dictionary form"""
-        return {**{k: getattr(self, k) for k in self.__annotations__.keys()}, **self.__dict__}
+        return {
+            **{k: getattr(self, k) for k in _class_annotations(type(self)).keys()},
+            **self.__dict__,
+        }
+
+    def updated(self, **parameters):
+        """Returns a modified copy of the Solution object"""
+        p_dict = deepcopy(self.__dict__)
+        p_dict.update(**parameters)
+        return self.__class__(**p_dict)

@@ -521,7 +521,7 @@ def bezier_points(control_points: List[pya.DPoint], sample_points: int = 100) ->
     Returns:
         List of pya.DPoints that can be used as part of a polygon
     """
-    if (len(control_points) - 1) % 3 == 0:
+    if (len(control_points) - 1) % 3 != 0:
         raise ValueError("For Bezier curve, the number of control points should equal to 3*n+1 for some integer n")
     bezier_matrix = np.array([[1, -3, 3, -1], [0, 3, -6, 3], [0, 0, 3, -3], [0, 0, 0, 1]])
     result_points = []
@@ -534,6 +534,42 @@ def bezier_points(control_points: List[pya.DPoint], sample_points: int = 100) ->
             endpoint=(window_start == len(control_points) - 4),
         )
     return result_points
+
+
+def bspline_path(
+    points: list[pya.DPoint], widths: list[float], sample_points: int = 100, circle_ends: bool = True
+) -> pya.DPolygon:
+    """Returns a B-Spline path with given target widths at each control point  .
+
+    Args:
+        points: list of B-Spline control points representing the center line of the path
+        widths: list of widths at each control point
+        sample_points: number of uniform samples of each cubic B-spline segment
+        circle_ends: whether to add semi circle at both ends of the path
+
+    Returns:
+        B-Spline path as a pya DPolygon
+    """
+    normals = []
+    for i, (p, w) in enumerate(zip(points, widths)):
+        d1 = vector_length_and_direction(p - points[i - 1])[1] if i > 0 else pya.DVector(0, 0)
+        d2 = vector_length_and_direction(points[i + 1] - p)[1] if i + 1 < len(points) else pya.DVector(0, 0)
+        normals.append(w / 2 / (1 + d1.sprod(d2)) * pya.DVector(d1.y + d2.y, -d1.x - d2.x))
+
+    if circle_ends:
+        start_angle = radians(get_angle(normals[0]))
+        start_arc = arc_points(widths[0] / 2, start_angle - pi, start_angle, sample_points, points[0])[1:-1]
+        end_angle = radians(get_angle(normals[-1]))
+        end_arc = arc_points(widths[-1] / 2, end_angle, end_angle + pi, sample_points, points[-1])[1:-1]
+    else:
+        start_arc, end_arc = [], []
+
+    return pya.DPolygon(
+        start_arc
+        + bspline_points([p + n for p, n in zip(points, normals)], sample_points, True, True)
+        + end_arc
+        + bspline_points([p - n for p, n in zip(points, normals)][::-1], sample_points, True, True)
+    )
 
 
 def force_rounded_corners(region: pya.Region, r_inner: float, r_outer: float, n: int) -> pya.Region:
@@ -595,3 +631,74 @@ def force_rounded_corners(region: pya.Region, r_inner: float, r_outer: float, n:
             poly.insert_hole(process_points(list(polygon.each_point_hole(hole))))
         result.insert(poly.round_corners(r_inner, r_outer, n))
     return result
+
+
+def get_center_of_bounding_box(polygon: pya.DPolygon) -> pya.DPoint:
+    """
+    Get the center position of a polygon from its bounding box.
+
+    The function computes the center of the polygon's bounding box and returns
+    it as a ``pya.DPoint``.
+
+    Args:
+        polygon (pya.DPolygon):
+            The polygon whose position is to be determined.
+
+    Returns:
+        pya.DPoint:
+            The center of the polygon's bounding box.
+    """
+    center = polygon.bbox().center()
+    return pya.DPoint(center.x, center.y)
+
+
+def rotate_arbitrary_degrees(
+    angle: float, polygon: pya.DPolygon, pivot: pya.DPoint = None, points: list[pya.DPoint] = None
+) -> tuple[pya.DPolygon, None | list[pya.DPoint]]:
+    """
+    Rotate a polygon by any angle around either its center or a specified pivot point.
+
+    Args:
+
+        angle (float):
+            Rotation angle in degrees.
+
+        polygon (pya.DPolygon):
+            The polygon to rotate.
+
+        pivot (pya.DPoint, optional):
+            The point around which the polygon is rotated. If not provided,
+            the function uses the polygon's current position as returned by
+            ``get_center_of_mass(...)``.
+
+        points (list[pya.DPoint] optional):
+            List of DPoints in order to return the transformed points
+
+    Returns:
+        tuple consisting of
+
+        pya.DPolygon:
+            A new transformed polygon rotated by the specified angle.
+
+        list[pya.DPoint]:
+            list of the transformed points in the same order as the given list.
+
+
+    Notes:
+        - If ``pivot`` is ``None``, the polygon is rotated around its current
+          position.
+        - The transformation does not modify the original polygon in place;
+          it returns a rotated copy instead.
+        - Internally, the polygon is translated to the pivot, rotated, and
+          translated back.
+
+    """
+    if pivot is None:
+        pivot = get_center_of_bounding_box(polygon=polygon)
+    v = pya.DVector(pivot.x, pivot.y)
+    t = pya.DCplxTrans(u=v) * pya.DCplxTrans(rot=angle) * pya.DCplxTrans(u=-v)
+
+    rotated_polygon = t * polygon
+    rotated_points = [t * p for p in points] if points is not None else None
+
+    return rotated_polygon, rotated_points

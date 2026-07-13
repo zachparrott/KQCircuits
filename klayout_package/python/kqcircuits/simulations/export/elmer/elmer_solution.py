@@ -48,34 +48,90 @@ class ElmerSolution(Solution):
             For example, if the dictionary is {'substrate*': 10, 'substrate*&vacuum': [2, 5], 'global_max': 100}, then
             the maximal mesh element length is 10 inside the substrates and 2 on region which is less than 5 units away
             from any substrate-vacuum interface. Outside these regions, the mesh element size can increase up to 100.
-        mesh_optimizer: Dictionary to determine mesh optimization, or None (default) to ignore optimization. The
-            dictionary can contain keywords 'method', 'force', 'niter' and 'dimTags'. See Gmsh manual
-            (gmsh.model.mesh.optimize) for details. The default value for 'method' is 'Netgen'.
+        mesh_optimizer: Dictionary to determine mesh optimization, or None to ignore optimization. The dictionary can
+            contain keywords 'method', 'force', 'niter' and 'dimTags'. See Gmsh manual (gmsh.model.mesh.optimize) for
+            details. The default value is {'method': 'Netgen'}.
+        mesh_options: Dictionary of additional meshing options. The key of every item must be the full name of the gmsh
+            option and the value is then the corresponding option value to be set. For a list of available options,
+            refer to https://gmsh.info/doc/texinfo/gmsh.html#Gmsh-options.
         vtu_output: Output vtu files to view fields in Paraview.
                     Turning this off will make the simulations slightly faster
         save_elmer_data: Save the full Elmer model after simulation. This can be used to restart the simulation
                          or extract result field values as a post-processing step.
+        min_mesh_quality: If the initial Gmsh mesh contains elements with quality below this limit, a local mesh
+            refinement around those elements is applied. This causes the whole mesh to be recomputed and can therefore
+            cause performance issues if set too high. The aim of the remeshing is to prevent fatal errors due
+            to degenerate elements in Elmer. The default value of 5e-7 is determined experimentally and might need
+            adjustment. Setting this to 0 disables the feature.
+
+        linear_system_method: Method for solving the FEM linear system of equations in Elmer. For iterative methods use
+                "GCR", "bicgstab" or any other iterative solver mentioned in ElmerSolver manual section 4.3.1.
+                For direct methods "umfpack", "mumps", "pardiso" or "superlu" can be used, but note that other
+                methods than "umfpack" require Elmer to be explicitly compiled with the corresponding solver software.
+                If a direct method is used the parameters "convergence_tolerance", "max_iterations",
+                "linear_system_preconditioning", "abort_not_converged" and all multigrid options ("mg_*") are redundant.
+        convergence_tolerance: Convergence tolerance of the iterative solver.
+        max_iterations: Maximum number of iterations for the iterative solver.
+        linear_system_preconditioning: Choice of preconditioner before using an iterative linear system solver.
+                        If using multigrid, the preconditioning is applied on the lowest iteration level.
+        abort_not_converged: Stop Elmer execution immediately if an iterative linear system solver fails to reach
+            convergence. If False, a warning is printed after the simulation finishes.
+        parent_solution: parent solution name to be used together with Simulation.parent_simulation
+
+        use_multigrid_solver: Use hierarchical iterative multigrid solver.
+        mg_smoother: Choice of smoother in multigrid solver. Tested options for electrostatic simulations are
+                     "SGS", "CG" and "wjacobi". VectorHelmholtzSolution support "cjacobi".
+        mg_smoothing_iterations: Number of smoothing iterations.
+        mg_relaxation_factor: Parameter for tuning the smoothers "wjacobi" and "cjacobi".
+        mg_lowest_method: Linear system method used for solving the smallest/lowest order linear system in multigrid.
+                          See `linear_system_method` for options.
+
     """
 
     tool: ClassVar[str] = ""
-
+    # Adaptive meshing settings
     percent_error: float = 0.005
     max_error_scale: float = 2.0
     max_outlier_fraction: float = 1e-3
     maximum_passes: int = 1
     minimum_passes: int = 1
+    # general
     is_axisymmetric: bool = False
     mesh_levels: int = 1
     mesh_size: dict = field(default_factory=dict)
-    mesh_optimizer: dict | None = None
+    mesh_optimizer: dict | None = field(default_factory=lambda: {"method": "Netgen"})
+    mesh_options: dict = field(default_factory=dict)
     vtu_output: bool = True
     save_elmer_data: bool = False
+    min_mesh_quality: float = 5e-7
+
+    linear_system_method: str = "GCR"
+    convergence_tolerance: float = 1.0e-9
+    max_iterations: int = 500
+    linear_system_preconditioning: str = "ILU0"
+    abort_not_converged: bool = False
+    parent_solution: str = ""
+
+    # Multigrid solver settings
+    use_multigrid_solver: bool = True
+    mg_smoother: str = "SGS"
+    mg_smoothing_iterations: int | None = None  # default depends on mg_smoother
+    mg_relaxation_factor: float = 0.28
+    mg_lowest_method: str = "CG"
 
     def get_solution_data(self):
         """Return the solution data in dictionary form."""
         sol_dict = {**self.__dict__, "tool": self.tool}
         sol_dict["solution_name"] = sol_dict.pop("name")
         return sol_dict
+
+    def __post_init__(self):
+        """Used for automatically setting default values depending on other parameters"""
+        if self.mg_smoothing_iterations is None:
+            defaults = {"sgs": 1, "wjacobi": 4, "cjacobi": 4, "cg": 12}
+            object.__setattr__(self, "mg_smoothing_iterations", defaults.get(self.mg_smoother.lower(), 1))
+        if self.mesh_optimizer == {}:
+            object.__setattr__(self, "mesh_optimizer", {"method": "Netgen"})
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -90,17 +146,15 @@ class ElmerVectorHelmholtzSolution(ElmerSolution):
         max_delta_s: Convergence tolerance in interpolating sweep
         london_penetration_depth: Allows supercurrent to flow on the metal boundaries within a layer
                                   of thickness `london_penetration_depth`
-        quadratic_approximation: Use edge finite elements of second degree
-        second_kind_basis: Use Nedelec finite elements of second kind
+        quadratic_approximation: Use edge finite elements of second order. Otherwise use first order.
+                                 If False, a direct solver such as `linear_system_method=zmumps` should be used.
+        second_kind_basis: Use Nedelec finite elements of second kind.
 
         use_av: Use a formulation of VectorHelmHoltz equation based on potentials A-V instead of electric field E.
                 For details see https://www.nic.funet.fi/pub/sci/physics/elmer/doc/ElmerModelsManual.pdf
                 WARNING: This option is experimental and might lead to poor convergence.
         conductivity: Adds a specified film conductivity on metal boundaries. Applies only when `use_av=True`
         nested_iteration: Enables alternative nested iterative solver to be used. Applies only when `use_av=True`
-        convergence_tolerance: Convergence tolerance of the iterative solver. Applies only when `use_av=True`
-        max_iterations: Maximum number of iterations for the iterative solver.
-                        Applies only when `use_av=True` and only to the main solver (not to calc fields or port solver)
     """
 
     tool: ClassVar[str] = "wave_equation"
@@ -110,17 +164,23 @@ class ElmerVectorHelmholtzSolution(ElmerSolution):
     sweep_type: str = "explicit"
     max_delta_s: float = 0.01
     london_penetration_depth: float = 0
-    quadratic_approximation: bool = False
+    quadratic_approximation: bool = True
     second_kind_basis: bool = False
-
+    # Experimental options
     use_av: bool = False
     conductivity: float = 0
     nested_iteration: bool = False
-    convergence_tolerance: float = 1.0e-10
-    max_iterations: int = 2000
+
+    # override defaults
+    mg_smoother: str = "cjacobi"
+    convergence_tolerance: float = 1.0e-6
+    max_iterations: int = 200
+    linear_system_preconditioning: str = "none"
+    mg_lowest_method: str = "zmumps"
 
     def __post_init__(self):
         """Cast frequency to list. Automatically called after init"""
+        super().__post_init__()
         if isinstance(self.frequency, (float, int)):
             # hack to modify the attributes of frozen dataclass
             object.__setattr__(self, "frequency", [float(self.frequency)])
@@ -135,53 +195,32 @@ class ElmerCapacitanceSolution(ElmerSolution):
 
     Args:
         p_element_order: polynomial order of p-elements
-        linear_system_method: Options: 1. Iterative methods "mg" (multigrid), "bicgstab" or any other iterative
-                solver mentioned in ElmerSolver manual section 4.3.1. 2. Direct methods "umfpack", "mumps", "pardiso" or
-                "superlu". Note that the use of other methods than "umfpack" requires Elmer to be explicitly compiled
-                with the corresponding solver software. If a direct method is used the parameters
-                "convergence_tolerance", "max_iterations" and "linear_system_preconditioning" are redundant
         integrate_energies: Calculate energy integrals over each object. Used in EPR simulations
-        convergence_tolerance: Convergence tolerance of the iterative solver.
-        max_iterations: Maximum number of iterations for the iterative solver.
-        linear_system_preconditioning: Choice of preconditioner before using an iterative linear system solver
         electric_infinity_bc: effectively extend the model domain to infinity using spherical boundary conditions
     """
 
     tool: ClassVar[str] = "capacitance"
 
     p_element_order: int = 3
-    linear_system_method: str = "mg"
     integrate_energies: bool = False
-    convergence_tolerance: float = 1.0e-9
-    max_iterations: int = 500
-    linear_system_preconditioning: str = "ILU0"
     electric_infinity_bc: bool = False
 
 
 @dataclass(kw_only=True, frozen=True)
 class ElmerCrossSectionSolution(ElmerSolution):
     """
-    Class for Elmer cross-section solution parameters.
-    By default both 2D Capacitance and 2D Inductance simulation will be run when using this
+    Class for Elmer cross-section solution parameters. By default both 2D Capacitance and 2D Inductance simulation
+    will be run when using this Solution type. The linear system solver parameters are hardcoded for the inductance
+    simulation and the solver related parameters in ElmerSolution only have effect on the Capacitance simulation.
 
     Args:
         p_element_order: polynomial order of p-elements
-        linear_system_method: Options: 1. Iterative methods "mg" (multigrid), "bicgstab" or any other iterative
-                solver mentioned in ElmerSolver manual section 4.3.1. 2. Direct methods "umfpack", "mumps", "pardiso" or
-                "superlu". Note that the use of other methods than "umfpack" requires Elmer to be explicitly compiled
-                with the corresponding solver software. If a direct method is used the parameters
-                "convergence_tolerance", "max_iterations" and "linear_system_preconditioning" are redundant
         integrate_energies: Calculate energy integrals over each object. Used in EPR simulations
         boundary_conditions: Parameters to determine boundary conditions for potential on the edges
                              of simulation box. Supported keys are `xmin` , `xmax` ,`ymin` and `ymax`
                              Example: `boundary_conditions = {"xmin": {"potential": 0}}`
-        convergence_tolerance: Convergence tolerance of the iterative solver.
-                               Applies only to capacitance part of the simulation
-        max_iterations: Maximum number of iterations for the iterative solver.
-                        Applies only to capacitance part of the simulation
         run_inductance_sim: Can be used to skip running the inductance simulation and just do 2D capacitance.
                             No impendance can then be calculated but useful for making EPR simulations faster
-        linear_system_preconditioning: Choice of preconditioner before using an iterative linear system solver
         voltage_excitations: Can be used to excite signals with arbitrary voltages, instead of 1V. If this parameter is
                              used, no capacitances will be computed.
         electric_infinity_bc: effectively extend the model domain to infinity using spherical boundary conditions
@@ -190,13 +229,9 @@ class ElmerCrossSectionSolution(ElmerSolution):
     tool: ClassVar[str] = "cross-section"
 
     p_element_order: int = 3
-    linear_system_method: str = "mg"
     integrate_energies: bool = False
     boundary_conditions: dict = field(default_factory=dict)
-    convergence_tolerance: float = 1.0e-9
-    max_iterations: int = 500
     run_inductance_sim: bool = True
-    linear_system_preconditioning: str = "ILU0"
     voltage_excitations: list[float] | None = None
     electric_infinity_bc: bool = False
 
@@ -209,14 +244,6 @@ class ElmerEPR3DSolution(ElmerSolution):
 
     Args:
         p_element_order: polynomial order of p-elements
-        linear_system_method: Options: 1. Iterative methods "mg" (multigrid), "bicgstab" or any other iterative
-                solver mentioned in ElmerSolver manual section 4.3.1. 2. Direct methods "umfpack", "mumps", "pardiso" or
-                "superlu". Note that the use of other methods than "umfpack" requires Elmer to be explicitly compiled
-                with the corresponding solver software. If a direct method is used the parameters
-                "convergence_tolerance", "max_iterations" and "linear_system_preconditioning" are redundant
-        convergence_tolerance: Convergence tolerance of the iterative solver.
-        max_iterations: Maximum number of iterations for the iterative solver.
-        linear_system_preconditioning: Choice of preconditioner before using an iterative linear system solver
         voltage_excitations: Can be used to excite signals with arbitrary voltages, instead of 1V. If this parameter is
                              used, no capacitances will be computed.
         electric_infinity_bc: effectively extend the model domain to infinity using spherical boundary conditions
@@ -225,10 +252,6 @@ class ElmerEPR3DSolution(ElmerSolution):
     tool: ClassVar[str] = "epr_3d"
 
     p_element_order: int = 3
-    linear_system_method: str = "mg"
-    convergence_tolerance: float = 1.0e-9
-    max_iterations: int = 1000
-    linear_system_preconditioning: str = "ILU0"
     voltage_excitations: list[float] | None = None
     electric_infinity_bc: bool = False
 

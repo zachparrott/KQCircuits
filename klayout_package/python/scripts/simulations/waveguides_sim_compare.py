@@ -144,7 +144,6 @@ if use_elmer:
     mesh_size = {
         "global_max": args.global_mesh_size,
         "1t1_gap": args.gap_mesh_size,
-        "port_*": args.port_mesh_size,
     }
 
     if wave_equation:
@@ -153,11 +152,11 @@ if use_elmer:
             "tool": "wave_equation",
             "frequency": 10,
         }
+        mesh_size["port_*"] = args.port_mesh_size
     else:
         export_parameters_elmer = {
             "path": path,
             "tool": "capacitance",
-            "linear_system_method": "mg",
             "p_element_order": args.p_element_order,
             "post_process": PostProcess("produce_cmatrix_table.py"),
             "electric_infinity_bc": True,
@@ -198,6 +197,8 @@ if use_elmer:
                                       #            parallel independent processes.
                                       #            Setting this larger than 1 activates
                                       #            the use of the simple workload manager.
+        'delete_meshes': True,        # Automatically delete meshes after each simulation.
+                                      # Can be used to reduce disk usage in long sweeps
     }
     if use_sbatch:
         # if simulation is run in a HPC system, sbatch_parameters can be given here

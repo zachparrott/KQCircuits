@@ -16,7 +16,6 @@
 # Please see our contribution agreements for individuals (meetiqm.com/iqm-individual-contributor-license-agreement)
 # and organizations (meetiqm.com/iqm-organization-contributor-license-agreement).
 
-
 import logging
 import shutil
 import subprocess
@@ -29,6 +28,7 @@ from pathlib import Path
 from typing import Any
 from multiprocessing import Pool
 import importlib.util
+import gmsh
 
 has_tqdm = importlib.util.find_spec("tqdm") is not None
 if has_tqdm:
@@ -43,17 +43,12 @@ def write_simulation_machine_versions_file(path: Path) -> None:
     versions["platform"] = platform.platform()
     versions["python"] = sys.version_info
 
-    gmsh_versions_list = []
-    with open(next(path.joinpath("log_files").glob("*.Gmsh.log")), encoding="utf-8") as f:
-        gmsh_log = f.readlines()
-        gmsh_versions_list = [line.replace("\n", "") for line in gmsh_log if "ersion" in line]
-
     elmer_versions_list = []
     with open(next(path.joinpath("log_files").glob("*Elmer.log")), encoding="utf-8") as f:
         elmer_log = f.readlines()
         elmer_versions_list = [line.replace("\n", "") for line in elmer_log if "ersion" in line]
 
-    versions["gmsh"] = gmsh_versions_list
+    versions["gmsh"] = gmsh.__version__
     versions["elmer"] = elmer_versions_list
 
     mpi_command = "mpirun" if shutil.which("mpirun") is not None else "mpiexec"
@@ -227,17 +222,35 @@ def elmer_check_warnings(log_file: Path | str, cwd: Path | str | None = None):
     with open(log_file, "r", encoding="utf-8") as f:
         lines = [line.rstrip() for line in f]
 
+    ignore_warnings = ["loadrestartfile: permutation vector too small:"]
+    warnings = {}
     # Only log each warning once
     for ind, l in enumerate(lines, 1):
+        warn_str = ""
         l_lower = l.lower()
         if "error" in l_lower:
-            logging.error(f"{l}. See {log_file}:{ind}")
-        elif "warning" in l_lower:
-            logging.warning(f"{l.replace('WARNING::', '')}. See {log_file}:{ind}")
+            warn_str = l
+        elif "warning" in l_lower and not any(w in l_lower for w in ignore_warnings):
+            warn_str = l.replace("WARNING::", "")
         elif "did not converge" in l_lower:
-            logging.warning(f" Linear system iteration did not converge. See {log_file}:{ind}")
+            warn_str = "Linear system iteration did not converge"
         elif "solution trivially zero" in l_lower:
-            logging.warning(f" Solution trivially zero. See {log_file}:{ind}")
+            warn_str = "Solution trivially zero"
+
+        if warn_str:
+            warnings[warn_str] = warnings.get(warn_str, []) + [str(ind)]
+
+    if warnings:
+        all_warnings = f"Elmer completed with warnings. Log file: {log_file}\n"
+        for warning, lines in warnings.items():
+            lines_str = ", ".join(lines) if len(lines) < 6 else ", ".join(lines[:5]) + f" (+ {len(lines) - 5} more)"
+            all_warnings += f"{warning}. See lines: {lines_str}\n"
+        # hack to prevent duplicating the warnings
+        logger = logging.getLogger()
+        old_handlers = logger.handlers
+        logger.handlers = old_handlers[-1:]
+        logging.warning(all_warnings)
+        logger.handlers = old_handlers
 
 
 def _run_elmer_solver(
