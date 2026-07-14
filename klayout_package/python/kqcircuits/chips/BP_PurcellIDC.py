@@ -126,7 +126,7 @@ class PurcellQubitsIDC(Chip):
     filter_positions = Param(
         pdt.TypeList,
         "Fractional position of resonators along the bandpass resonator length.",
-        [0.35, 0.45, 0.5, 0.65],
+        [0.35, 0.45, 0.55, 0.65],
     )
     resonator_lengths = Param(
         # pdt.TypeList, "Readout resonators length in um.", [8670, 8580, 8490, 8400]
@@ -361,28 +361,13 @@ class PurcellQubitsIDC(Chip):
             hanger_vertical_extend
             - corner_radius_subtraction
             + hanger_horizontal_extend
-            # - 2 * self.r * (1 - pi / 2)
             - corner_radius_subtraction
             + meander_vertical_extend
             + spine_meander_offset
             - corner_radius_subtraction
             + last_horizontal_extend
-            # + 300
-            # - self.r * (1 - pi / 2)
-            # - 150
         )
 
-        # fixed lengths right: 50 vert + 200 horz - 2 * turn radii on the bottom side
-        # top side right: 100 vert + clength/2 + 200 horz - 1* turn_radius
-        # top side right contd: - 1*turn_radius + y position of qubit
-        # 200 is an unknonw compensation
-        # rightFixed = (
-        #     50
-        #     + 200
-        #     + 50
-        #     - 2 * self.r * (1 - pi / 2)
-        #     - 1 * 200
-        # )
         rightFixed = (
             hanger_vertical_extend
             - corner_radius_subtraction
@@ -396,14 +381,8 @@ class PurcellQubitsIDC(Chip):
         qubit_port = self.refpoints[f"Q_U{index}_port_cplr"]
         # qubit_corner = self.refpoints[self._qubit_coupler_ref_name(f"Q_U{index}")]
         # qubitVjog = qubit_port.y - qubit_corner.y
-        qubitVjog = qubit_port.y - spine_y
+        qubitVjog = abs(qubit_port.y - spine_y)
 
-        # rightFixed += (
-        #     qubitVjog
-        #     - 2 * self.r * (1 - pi / 2)
-        #     + 100
-        #     + (couple_length / 2 + 200 + self.r)
-        # )
         rightFixed += (
             +spine_meander_offset
             - corner_radius_subtraction
@@ -522,19 +501,19 @@ class PurcellQubitsIDC(Chip):
         self.insert_cell(right_wc)
 
         # debug lengths
-        produce_label(
-            self.cell,
-            # f"D{index} {leftLength:.0f} {sum(left_wc.segment_lengths()):.0f} {rightLength:.0f} {sum(right_wc.segment_lengths()):.0f} um = {hangerLength + (sum(left_wc.segment_lengths()) + sum(right_wc.segment_lengths())):.0f}",
-            f"U{index} {(resonator_length - hangerLength):.0f} {(leftLength + rightLength + qubit_load + hangerLength):.0f} {(qubit_load + sum(left_wc.segment_lengths()) + sum(right_wc.segment_lengths()) + hangerLength):.0f} um",
-            # f"U{index} {(resonator_length - hangerLength):.0f} {(leftLength - sum(left_wc.segment_lengths())):.0f} {(rightLength - sum(right_wc.segment_lengths())):.0f} um x{qubitVjog:.0f}",
-            pya.DPoint(-400, -index * 300 - 400 - 1200),
-            LabelOrigin.BOTTOMRIGHT,
-            0,
-            10,
-            [self.face()["base_metal_gap_wo_grid"]],
-            self.face()["ground_grid_avoidance"],
-            200,
-        )
+        # produce_label(
+        #     self.cell,
+        #     # f"D{index} {leftLength:.0f} {sum(left_wc.segment_lengths()):.0f} {rightLength:.0f} {sum(right_wc.segment_lengths()):.0f} um = {hangerLength + (sum(left_wc.segment_lengths()) + sum(right_wc.segment_lengths())):.0f}",
+        #     f"U{index} {(resonator_length - hangerLength):.0f} {(leftLength + rightLength + qubit_load + hangerLength):.0f} {(qubit_load + sum(left_wc.segment_lengths()) + sum(right_wc.segment_lengths()) + hangerLength):.0f} um",
+        #     # f"U{index} {(resonator_length - hangerLength):.0f} {(leftLength - sum(left_wc.segment_lengths())):.0f} {(rightLength - sum(right_wc.segment_lengths())):.0f} um x{qubitVjog:.0f}",
+        #     pya.DPoint(-400, -index * 300 - 400 - 1200),
+        #     LabelOrigin.BOTTOMRIGHT,
+        #     0,
+        #     10,
+        #     [self.face()["base_metal_gap_wo_grid"]],
+        #     self.face()["ground_grid_avoidance"],
+        #     200,
+        # )
 
     def _readout_resonator_D(
         self,
@@ -558,42 +537,60 @@ class PurcellQubitsIDC(Chip):
         leftLength = resonator_length - rollLength - 0.5 * hangerLength
         rightLength = rollLength - 0.5 * hangerLength - qubit_load
 
-        # fixed lengths left: 50 vert + 200 horz - 2 * turn radii on the bottom side
-        # left top side: 100 vert, + 300 horz - turn radius
-        # 150 is an unknown compensation
-        leftFixed = (
-            50
-            + 200
-            + 50
-            - 2 * self.r * (1 - pi / 2)
-            + 100
-            + 300
-            - self.r * (1 - pi / 2)
-            - 150
-        )
+        # extend up from the hanger.
+        hanger_vertical_extend = 50.0
+        # move away from the coupler in x
+        hanger_horizontal_extend = 200.0
+        # vertical extend before the meander
+        meander_vertical_extend = 50.0
 
-        # fixed lengths right: 50 vert + 200 horz - 2 * turn radii on the bottom side
-        # top side right: 100 vert + clength/2 + 200 horz - 1* turn_radius
-        # top side right contd: - 1*turn_radius + y position of qubit
-        # 200 is an unknonw compensation
-        # zero*200 added on 7/8/2026 by ZLP in device 1 debug.
-        rightFixed = 50 + 200 + 50 - 2 * self.r * (1 - pi / 2) - 1 * 200
-        qubit_port = self.refpoints[f"Q_D{index}_port_cplr"]
-        qubit_corner = self.refpoints[self._qubit_coupler_ref_name(f"Q_D{index}")]
-        qubitVjog = qubit_port.y - qubit_corner.y
+        # corner radius subtraction
+        # old code: 1 * self.r * (1 - pi / 2) per 90 deg turn
+        corner_radius_subtraction = self.r * (2 - pi / 2)
+        # last jog pointing away
+        last_horizontal_extend = 300.0
 
-        rightFixed += (
-            qubitVjog
-            - 2 * self.r * (1 - pi / 2)
-            + 100
-            + (couple_length / 2 + 200 + self.r)
-        )
-
+        spine_meander_offset = 100.0
         base_y = self._readout_base_y("D", index)
         spine_y = self._readout_spine_y("D", base_y, qubit_index)
-        # point of blame
-        # meander_y = spine_y + 2 * self.r
-        meander_y = spine_y + 2 * self.r
+        # meander is 2*r below the spine_y. Couldve been fixed 100?
+        # meander_y = spine_y - 2 * self.r
+        meander_y = spine_y + spine_meander_offset
+
+        leftFixed = (
+            hanger_vertical_extend
+            - corner_radius_subtraction
+            + hanger_horizontal_extend
+            - corner_radius_subtraction
+            + meander_vertical_extend
+            + spine_meander_offset
+            - corner_radius_subtraction
+            + last_horizontal_extend
+        )
+
+        rightFixed = (
+            hanger_vertical_extend
+            - corner_radius_subtraction
+            + hanger_horizontal_extend
+            - corner_radius_subtraction
+            + meander_vertical_extend
+        )
+
+        qubit_port = self.refpoints[f"Q_D{index}_port_cplr"]
+        # the qubitVjog was signed wrong for downside.
+        qubitVjog = abs(qubit_port.y - spine_y)
+
+        rightFixed += (
+            +spine_meander_offset
+            - corner_radius_subtraction
+            # qubit center to meander center
+            + couple_length / 2
+            + hanger_horizontal_extend
+            # the couple length is between radii, not including
+            + self.r
+            + qubitVjog
+            - corner_radius_subtraction
+        )
 
         # left composite
         leftNodes = [
@@ -601,20 +598,24 @@ class PurcellQubitsIDC(Chip):
             Node(self.refpoints[f"HR_D{index}_port_resonator_b_corner"]),
             Node(
                 (
-                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 200,
+                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x
+                    - hanger_horizontal_extend,
                     self.refpoints[f"HR_D{index}_port_resonator_b_corner"].y,
                 )
             ),
             Node(
                 (
-                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 200,
-                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].y - 50,
+                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x
+                    - hanger_horizontal_extend,
+                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].y
+                    - meander_vertical_extend,
                 ),
                 ab_across=True,
             ),
             Node(
                 (
-                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 200,
+                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x
+                    - hanger_horizontal_extend,
                     meander_y,
                 ),
                 length_before=leftLength - leftFixed,
@@ -623,13 +624,16 @@ class PurcellQubitsIDC(Chip):
             ),
             Node(
                 (
-                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 200,
+                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x
+                    - hanger_horizontal_extend,
                     spine_y,
                 ),
             ),
             Node(
                 (
-                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x - 500,
+                    self.refpoints[f"HR_D{index}_port_resonator_b_corner"].x
+                    - hanger_horizontal_extend
+                    - last_horizontal_extend,
                     spine_y,
                 ),
             ),
@@ -650,21 +654,25 @@ class PurcellQubitsIDC(Chip):
             Node(self.refpoints[f"HR_D{index}_port_resonator_a_corner"]),
             Node(
                 (
-                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x + 200,
+                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x
+                    + hanger_horizontal_extend,
                     self.refpoints[f"HR_D{index}_port_resonator_a_corner"].y,
                 )
             ),
             Node(
                 (
-                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x + 200,
-                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].y - 50,
+                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x
+                    + hanger_horizontal_extend,
+                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].y
+                    - meander_vertical_extend,
                 ),
                 ab_across=True,
             ),
             Node(
                 (
-                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x + 200,
-                    meander_y,
+                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x
+                    + hanger_horizontal_extend,
+                    spine_y + spine_meander_offset,
                 ),
                 length_before=rightLength - rightFixed,
                 meander_direction=-1,
@@ -672,7 +680,8 @@ class PurcellQubitsIDC(Chip):
             ),
             Node(
                 (
-                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x + 200,
+                    self.refpoints[f"HR_D{index}_port_resonator_a_corner"].x
+                    + hanger_horizontal_extend,
                     spine_y,
                 ),
             ),
@@ -686,18 +695,19 @@ class PurcellQubitsIDC(Chip):
         )
         self.insert_cell(right_wc)
 
-        produce_label(
-            self.cell,
-            # f"D{index} {leftLength:.0f} {sum(left_wc.segment_lengths()):.0f} {rightLength:.0f} {sum(right_wc.segment_lengths()):.0f} um = {hangerLength + (sum(left_wc.segment_lengths()) + sum(right_wc.segment_lengths())):.0f}",
-            f"D{index} {resonator_length - hangerLength:.0f} {(leftLength + rightLength):.0f} {(sum(left_wc.segment_lengths()) + sum(right_wc.segment_lengths())):.0f} um",
-            pya.DPoint(-400, -index * 300 - 400),
-            LabelOrigin.BOTTOMRIGHT,
-            0,
-            10,
-            [self.face()["base_metal_gap_wo_grid"]],
-            self.face()["ground_grid_avoidance"],
-            200,
-        )
+        # produce_label(
+        #     self.cell,
+        #     # f"D{index} {leftLength:.0f} {sum(left_wc.segment_lengths()):.0f} {rightLength:.0f} {sum(right_wc.segment_lengths()):.0f} um = {hangerLength + (sum(left_wc.segment_lengths()) + sum(right_wc.segment_lengths())):.0f}",
+        #     f"D{index} {(resonator_length - hangerLength):.0f} {(leftLength + rightLength + qubit_load + hangerLength):.0f} {(qubit_load + sum(left_wc.segment_lengths()) + sum(right_wc.segment_lengths()) + hangerLength):.0f} um",
+        #     # f"D{index} {(resonator_length - hangerLength):.0f} {(leftLength - sum(left_wc.segment_lengths())):.0f} {(rightLength - sum(right_wc.segment_lengths())):.0f} um x{(200 + qubitVjog):.0f}",
+        #     pya.DPoint(-400, -index * 300 - 400),
+        #     LabelOrigin.BOTTOMRIGHT,
+        #     0,
+        #     10,
+        #     [self.face()["base_metal_gap_wo_grid"]],
+        #     self.face()["ground_grid_avoidance"],
+        #     200,
+        # )
 
     def build(self):
         self.launchers = self.produce_two_launchers(
