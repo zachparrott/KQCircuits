@@ -132,13 +132,16 @@ class PurcellQubitsIDC(Chip):
         # pdt.TypeList, "Readout resonators length in um.", [8670, 8580, 8490, 8400]
         pdt.TypeList,
         "Readout resonators length in um.",
-        [8000, 8000, 8000, 8000],
+        [8670, 8580, 8490, 8400],
+        # [8000, 8000, 8000, 8000],
     )
     resonator_couplings = Param(
-        # pdt.TypeList, "Readout coupling length in um.", [322, 332, 319, 326]
         pdt.TypeList,
         "Readout coupling length in um.",
-        [300, 300, 300, 300],
+        [322, 332, 319, 326],
+        # pdt.TypeList,
+        # "Readout coupling length in um.",
+        # [300, 300, 300, 300],
     )
     hanger_ground_width = Param(
         pdt.TypeDouble, "Ground width between CPWs.", 2, unit="μm"
@@ -150,8 +153,8 @@ class PurcellQubitsIDC(Chip):
     qubit_loading = Param(
         pdt.TypeList,
         "Resonator length to subtract on qubit loaded side in um.",
-        # [501.90, 530.05, 559.87, 589.40],
-        [100, 100, 100, 100],
+        [501.90, 530.05, 559.87, 589.40],
+        # [100, 100, 100, 100],
     )
 
     labels = Param(
