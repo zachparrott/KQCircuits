@@ -336,10 +336,6 @@ class PurcellQubitsIDC(Chip):
         leftLength = resonator_length - rollLength - 0.5 * hangerLength
         rightLength = rollLength - 0.5 * hangerLength - qubit_load
 
-        # fixed lengths left: 50 vert + 200 horz - 2 * turn radii on the bottom side
-        # left top side: 100 vert, + 300 horz - turn radius
-        # 150 is an unknown compensation
-
         # extend up from the hanger.
         hanger_vertical_extend = 50.0
         # move away from the coupler in x
@@ -504,19 +500,19 @@ class PurcellQubitsIDC(Chip):
         self.insert_cell(right_wc)
 
         # debug lengths
-        # produce_label(
-        #     self.cell,
-        #     # f"D{index} {leftLength:.0f} {sum(left_wc.segment_lengths()):.0f} {rightLength:.0f} {sum(right_wc.segment_lengths()):.0f} um = {hangerLength + (sum(left_wc.segment_lengths()) + sum(right_wc.segment_lengths())):.0f}",
-        #     f"U{index} {(resonator_length - hangerLength):.0f} {(leftLength + rightLength + qubit_load + hangerLength):.0f} {(qubit_load + sum(left_wc.segment_lengths()) + sum(right_wc.segment_lengths()) + hangerLength):.0f} um",
-        #     # f"U{index} {(resonator_length - hangerLength):.0f} {(leftLength - sum(left_wc.segment_lengths())):.0f} {(rightLength - sum(right_wc.segment_lengths())):.0f} um x{qubitVjog:.0f}",
-        #     pya.DPoint(-400, -index * 300 - 400 - 1200),
-        #     LabelOrigin.BOTTOMRIGHT,
-        #     0,
-        #     10,
-        #     [self.face()["base_metal_gap_wo_grid"]],
-        #     self.face()["ground_grid_avoidance"],
-        #     200,
-        # )
+        produce_label(
+            self.cell,
+            # f"D{index} {leftLength:.0f} {sum(left_wc.segment_lengths()):.0f} {rightLength:.0f} {sum(right_wc.segment_lengths()):.0f} um = {hangerLength + (sum(left_wc.segment_lengths()) + sum(right_wc.segment_lengths())):.0f}",
+            f"U{index} {(resonator_length - hangerLength):.0f} {(leftLength + rightLength + qubit_load + hangerLength):.0f} {(qubit_load + sum(left_wc.segment_lengths()) + sum(right_wc.segment_lengths()) + hangerLength):.0f} um",
+            # f"U{index} {(resonator_length - hangerLength):.0f} {(leftLength - sum(left_wc.segment_lengths())):.0f} {(rightLength - sum(right_wc.segment_lengths())):.0f} um x{qubitVjog:.0f}",
+            pya.DPoint(-400, -index * 300 - 400 - 1200),
+            LabelOrigin.BOTTOMRIGHT,
+            0,
+            10,
+            [self.face()["base_metal_gap_wo_grid"]],
+            self.face()["ground_grid_avoidance"],
+            200,
+        )
 
     def _readout_resonator_D(
         self,
