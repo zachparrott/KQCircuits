@@ -159,7 +159,7 @@ class NISTpart3(Chip):
         self.insert_cell(
             FingerPadsJJ, U_coords[0], f"Q_U0", ground_gap=['800', '510'], 
             ground_gap_r=0.0, coupler_extent=['153.8', '30'], coupler_r=0.0, coupler_offset=20.0, 
-            finger_width=3, finger_gap=3, finger_gap_end=3, finger_length=59, finger_number=34,
+            idc_finger_width=3, finger_gap=3, finger_gap_end=3, finger_length=59, finger_number=34,
             corner_r=0, with_squid=False, with_tapers=True, 
             island1_taper_width=20, island1_taper_junction_width=20, 
             island2_taper_width=20, island2_taper_junction_width=20, 
@@ -181,7 +181,7 @@ class NISTpart3(Chip):
         self.insert_cell(
             FingerPadsJJ, U_coords[2], f"Q_U2", ground_gap=['800', '510'], 
             ground_gap_r=0.0, coupler_extent=['139.5', '30'], coupler_r=0.0, coupler_offset=20.0, 
-            finger_width=5, finger_gap=5, finger_gap_end=5, finger_length=63.4, finger_number=30,
+            idc_finger_width=5, finger_gap=5, finger_gap_end=5, finger_length=63.4, finger_number=30,
             corner_r=0, with_squid=False, with_tapers=True, 
             island1_taper_width=20, island1_taper_junction_width=20, 
             island2_taper_width=20, island2_taper_junction_width=20, 
@@ -213,7 +213,7 @@ class NISTpart3(Chip):
         self.insert_cell(
         FingerPadsJJ, D_coords[1], f"Q_D1", ground_gap=['800', '510'], 
             ground_gap_r=0.0, coupler_extent=['96.4', '30'], coupler_r=0.0, coupler_offset=20.0, 
-            finger_width=7, finger_gap=7, finger_gap_end=7, finger_length=61, finger_number=26,
+            idc_finger_width=7, finger_gap=7, finger_gap_end=7, finger_length=61, finger_number=26,
             corner_r=0, with_squid=False, with_tapers=True, 
             island1_taper_width=20, island1_taper_junction_width=20, 
             island2_taper_width=20, island2_taper_junction_width=20, 
@@ -235,9 +235,9 @@ class NISTpart3(Chip):
         self.insert_cell(
             FingerPadsJJ, D_coords[3], f"Q_D3", ground_gap=['800', '510'], 
             ground_gap_r=0.0, coupler_extent=['82.3', '30'], coupler_r=0.0, coupler_offset=20.0, 
-            finger_width=10, finger_gap=10, finger_gap_end=10, finger_length=52.4, finger_number=26,
+            idc_finger_width=10, finger_gap=10, finger_gap_end=10, finger_length=52.4, finger_number=26,
             corner_r=0, with_squid=False, with_tapers=True, 
-            island1_taper_width=20, island1_taper_junction_width=20, 
+            island1_taper_width=20, island1_taper_junction_width=20,  
             island2_taper_width=20, island2_taper_junction_width=20, 
         )
 
